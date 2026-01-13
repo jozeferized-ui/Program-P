@@ -59,6 +59,8 @@ model Project {
   quotationItems  QuotationItem[]
   costEstimates   CostEstimateItem[]
   orders          Order[]
+  comments        Comment[]
+  attachments     Attachment[]
   
   suppliers       Supplier[]
   employees       Employee[]
@@ -339,4 +341,28 @@ model AuditLog {
   newData    String?  // JSON
   ipAddress  String?
   timestamp  DateTime @default(now())
+}
+
+// Project Comments
+model Comment {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    Int?
+  author    String   // Name of commenter
+  content   String
+  createdAt DateTime @default(now())
+}
+
+// File Attachments
+model Attachment {
+  id         Int      @id @default(autoincrement())
+  projectId  Int
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  fileName   String
+  fileUrl    String   // URL to stored file
+  fileSize   Int      // Size in bytes
+  fileType   String   // MIME type
+  uploadedBy String?
+  createdAt  DateTime @default(now())
 }

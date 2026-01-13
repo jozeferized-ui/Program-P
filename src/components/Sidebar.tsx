@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { LayoutDashboard, Users, Briefcase, Settings, Calendar, Truck, PieChart, PackageOpen, History, Trash2, FileText, Warehouse, ChevronLeft, ChevronRight, GripVertical, RotateCcw, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Briefcase, Settings, Calendar, Truck, PieChart, PackageOpen, History, Trash2, FileText, Warehouse, ChevronLeft, ChevronRight, GripVertical, RotateCcw, LogOut, BarChart3 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -28,6 +28,7 @@ const defaultSidebarItems: SidebarItem[] = [
     { id: 'finances', icon: PieChart, label: 'Finanse', href: '/finances' },
     { id: 'clients', icon: Users, label: 'Klienci', href: '/clients' },
     { id: 'projects', icon: Briefcase, label: 'Projekty', href: '/projects' },
+    { id: 'gantt', icon: BarChart3, label: 'Gantt', href: '/gantt' },
     { id: 'production', icon: PackageOpen, label: 'Produkcja', href: '/production' },
     { id: 'management', icon: LayoutDashboard, label: 'Zarządzanie', href: '/management' },
     { id: 'history', icon: History, label: 'Historia', href: '/history' },
@@ -38,6 +39,7 @@ const defaultSidebarItems: SidebarItem[] = [
     { id: 'trash', icon: Trash2, label: 'Kosz', href: '/trash' },
     { id: 'settings', icon: Settings, label: 'Ustawienia', href: '/settings' },
 ];
+
 
 const SIDEBAR_ORDER_KEY = 'sidebar-order';
 

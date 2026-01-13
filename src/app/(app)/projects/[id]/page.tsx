@@ -13,6 +13,8 @@ import { ResourceGallery } from '@/components/resources/ResourceGallery';
 import { QuotationManager } from '@/components/projects/QuotationManager';
 import { OrdersManager } from '@/components/projects/OrdersManager';
 import { CostEstimationManager } from '@/components/projects/CostEstimationManager';
+import { ProjectComments } from '@/components/projects/ProjectComments';
+import { ProjectAttachments } from '@/components/projects/ProjectAttachments';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { getTasks } from '@/actions/tasks';
@@ -65,7 +67,10 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                         <TabsTrigger value="orders">Zamówienia</TabsTrigger>
                         <TabsTrigger value="expenses">Koszty</TabsTrigger>
                         <TabsTrigger value="resources">Zasoby</TabsTrigger>
+                        <TabsTrigger value="comments">💬 Komentarze</TabsTrigger>
+                        <TabsTrigger value="attachments">📎 Załączniki</TabsTrigger>
                     </TabsList>
+
 
                     <TabsContent value="tasks" className="mt-6">
                         <TaskBoard
@@ -168,7 +173,24 @@ export default async function ProjectDetailsPage({ params }: { params: Promise<{
                     <TabsContent value="resources" className="mt-6">
                         <ResourceGallery projectId={projectId} resources={resources} />
                     </TabsContent>
+
+                    <TabsContent value="comments" className="mt-6">
+                        <Card>
+                            <CardContent className="pt-6">
+                                <ProjectComments projectId={projectId} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="attachments" className="mt-6">
+                        <Card>
+                            <CardContent className="pt-6">
+                                <ProjectAttachments projectId={projectId} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
                 </Tabs>
+
             </div>
         </div>
     );
