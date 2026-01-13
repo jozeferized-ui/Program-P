@@ -1,0 +1,290 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id          Int       @id @default(autoincrement())
+  name        String
+  email       String?
+  phone       String?
+  notes       String?
+  color       String?
+  categoryId  Int?
+  category    ClientCategory? @relation(fields: [categoryId], references: [id])
+  projects    Project[]
+  isDeleted   Int       @default(0)
+  deletedAt   DateTime?
+}
+
+model ClientCategory {
+  id      Int      @id @default(autoincrement())
+  name    String
+  clients Client[]
+}
+
+model Project {
+  id              Int       @id @default(autoincrement())
+  clientId        Int
+  client          Client    @relation(fields: [clientId], references: [id])
+  parentProjectId Int?
+  parentProject   Project?  @relation("ProjectToProject", fields: [parentProjectId], references: [id])
+  subProjects     Project[] @relation("ProjectToProject")
+  
+  name            String
+  description     String?
+  status          String
+  startDate       DateTime?
+  endDate         DateTime?
+  totalValue      Float     @default(0)
+  quoteDueDate    DateTime?
+  quoteStatus     String?
+  quotationTitle  String?
+  acceptedDate    DateTime?
+  createdAt       DateTime  @default(now())
+  address         String?
+  lat             Float?
+  lng             Float?
+  colorMarker     String?
+  isDeleted       Int       @default(0)
+  deletedAt       DateTime?
+
+  tasks           Task[]
+  expenses        Expense[]
+  resources       Resource[]
+  quotationItems  QuotationItem[]
+  costEstimates   CostEstimateItem[]
+  orders          Order[]
+  
+  suppliers       Supplier[]
+  employees       Employee[]
+}
+
+model Task {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id])
+  title       String
+  description String?
+  status      String
+  priority    String
+  dueDate     DateTime?
+  subtasks    String?   // JSON string
+  checklist   String?   // JSON string
+  createdAt   DateTime  @default(now())
+  isDeleted   Int       @default(0)
+  deletedAt   DateTime?
+  orders      Order[]
+}
+
+model Expense {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id])
+  title       String
+  amount      Float
+  netAmount   Float?
+  taxRate     Float?
+  type        String
+  date        DateTime
+  orderId     Int?
+  order       Order?    @relation(fields: [orderId], references: [id])
+  isDeleted   Int       @default(0)
+  deletedAt   DateTime?
+}
+
+model Resource {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id])
+  name        String
+  type        String
+  contentBlob Bytes?
+  contentUrl  String?
+  folder      String?
+  createdAt   DateTime  @default(now())
+  isDeleted   Int       @default(0)
+  deletedAt   DateTime?
+}
+
+model Supplier {
+  id            Int       @id @default(autoincrement())
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  website       String?
+  notes         String?
+  categoryId    Int?
+  category      SupplierCategory? @relation(fields: [categoryId], references: [id])
+  isDeleted     Int       @default(0)
+  deletedAt     DateTime?
+  projects      Project[]
+  orders        Order[]
+}
+
+model SupplierCategory {
+  id        Int        @id @default(autoincrement())
+  name      String
+  suppliers Supplier[]
+}
+
+model QuotationItem {
+  id              Int     @id @default(autoincrement())
+  projectId       Int
+  project         Project @relation(fields: [projectId], references: [id])
+  description     String
+  quantity        Float
+  unit            String
+  unitPrice       Float
+  margin          Float?
+  priceWithMargin Float?
+  total           Float
+  section         String?
+}
+
+model Order {
+  id          Int       @id @default(autoincrement())
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id])
+  taskId      Int?
+  task        Task?     @relation(fields: [taskId], references: [id])
+  supplierId  Int?
+  supplier    Supplier? @relation(fields: [supplierId], references: [id])
+  title       String
+  amount      Float
+  netAmount   Float?
+  taxRate     Float?
+  status      String
+  date        DateTime
+  quantity    Float?
+  unit        String?
+  notes       String?
+  url         String?
+  addedToWarehouse Boolean @default(false)
+  isDeleted   Int       @default(0)
+  deletedAt   DateTime?
+  expenses    Expense[]
+}
+
+model CostEstimateItem {
+  id           Int     @id @default(autoincrement())
+  projectId    Int
+  project      Project @relation(fields: [projectId], references: [id])
+  section      String
+  description  String
+  quantity     Float
+  unit         String
+  unitNetPrice Float
+  taxRate      Float
+}
+
+model OrderTemplate {
+  id            Int    @id @default(autoincrement())
+  title         String
+  defaultAmount Float
+}
+
+model Notification {
+  id          Int      @id @default(autoincrement())
+  type        String
+  title       String
+  message     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  relatedId   Int?
+  relatedType String?
+}
+
+model Employee {
+  id        Int       @id @default(autoincrement())
+  firstName String
+  lastName  String
+  position  String
+  phone     String
+  email     String
+  rate      Float
+  status    String
+  isDeleted Int       @default(0)
+  projects  Project[]
+  tools     Tool[] @relation("ToolEmployees")
+  employeePermissions EmployeePermission[]
+}
+
+model Tool {
+  id                 Int       @id @default(autoincrement())
+  name               String
+  brand              String?
+  model              String?
+  serialNumber       String?
+  status             String
+  purchaseDate       DateTime
+  price              Float
+  categoryId         Int?
+  category           ToolCategory? @relation(fields: [categoryId], references: [id])
+  assignedEmployees          Employee[] @relation("ToolEmployees")
+  lastInspectionDate DateTime?
+  inspectionExpiryDate DateTime?
+  protocolNumber     String?
+  protocols          Protocol[]
+  isDeleted          Int      @default(0)
+}
+
+model ToolCategory {
+  id    Int    @id @default(autoincrement())
+  name  String @unique
+  tools Tool[]
+}
+
+model Protocol {
+  id             Int      @id @default(autoincrement())
+  toolId         Int
+  tool           Tool     @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  date           DateTime
+  inspectorName  String
+  result         String
+  content        String
+  createdAt      DateTime @default(now())
+}
+
+model EmployeePermission {
+  id             Int      @id @default(autoincrement())
+  employeeId     Int
+  employee       Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  name           String
+  issueDate      DateTime
+  expiryDate     DateTime?
+  number         String?
+  createdAt      DateTime @default(now())
+}
+
+model WarehouseItem {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  quantity    Float
+  unit        String
+  minQuantity Float?
+  category    String?
+  location    String?
+  lastUpdated DateTime @updatedAt
+  isDeleted   Int      @default(0)
+  history     WarehouseHistoryItem[]
+}
+
+model WarehouseHistoryItem {
+  id        Int           @id @default(autoincrement())
+  itemId    Int
+  item      WarehouseItem @relation(fields: [itemId], references: [id])
+  type      String
+  quantity  Float
+  date      DateTime      @default(now())
+  reason    String?
+  userId    Int?
+}
