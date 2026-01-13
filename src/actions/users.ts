@@ -7,50 +7,58 @@ import { cookies } from 'next/headers';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 
-export type UserRole = 'ADMIN' | 'MANAGER' | 'USER' | 'VIEWER';
-
 export interface UserData {
     id: number;
     email: string;
     firstName: string;
     lastName: string;
-    role: UserRole;
+    roleId: number;
+    roleName: string;
+    permissions: string[];
     isActive: boolean;
     createdAt: Date;
 }
 
-// Get all users (admin only)
+// Get all users
 export async function getUsers(): Promise<UserData[]> {
     const users = await prisma.user.findMany({
-        select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            isActive: true,
-            createdAt: true,
-        },
+        include: { role: true },
         orderBy: { createdAt: 'desc' },
     });
-    return users as UserData[];
+
+    return users.map(user => ({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        roleId: user.roleId,
+        roleName: user.role.name,
+        permissions: JSON.parse(user.role.permissions) as string[],
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+    }));
 }
 
 // Get user by ID
 export async function getUserById(id: number): Promise<UserData | null> {
     const user = await prisma.user.findUnique({
         where: { id },
-        select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            isActive: true,
-            createdAt: true,
-        },
+        include: { role: true },
     });
-    return user as UserData | null;
+
+    if (!user) return null;
+
+    return {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        roleId: user.roleId,
+        roleName: user.role.name,
+        permissions: JSON.parse(user.role.permissions) as string[],
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+    };
 }
 
 // Create new user
@@ -59,13 +67,19 @@ export async function createUser(data: {
     password: string;
     firstName: string;
     lastName: string;
-    role?: UserRole;
+    roleId: number;
 }): Promise<{ success: boolean; error?: string; user?: UserData }> {
     try {
         // Check if email exists
         const existing = await prisma.user.findUnique({ where: { email: data.email } });
         if (existing) {
             return { success: false, error: 'Email już istnieje' };
+        }
+
+        // Check if role exists
+        const role = await prisma.role.findUnique({ where: { id: data.roleId } });
+        if (!role) {
+            return { success: false, error: 'Rola nie istnieje' };
         }
 
         // Hash password
@@ -77,20 +91,25 @@ export async function createUser(data: {
                 password: hashedPassword,
                 firstName: data.firstName,
                 lastName: data.lastName,
-                role: data.role || 'USER',
+                roleId: data.roleId,
             },
-            select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-            },
+            include: { role: true },
         });
 
-        return { success: true, user: user as UserData };
+        return {
+            success: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                roleId: user.roleId,
+                roleName: user.role.name,
+                permissions: JSON.parse(user.role.permissions) as string[],
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+            },
+        };
     } catch (error) {
         console.error('Create user error:', error);
         return { success: false, error: 'Błąd tworzenia użytkownika' };
@@ -104,7 +123,7 @@ export async function updateUser(
         email?: string;
         firstName?: string;
         lastName?: string;
-        role?: UserRole;
+        roleId?: number;
         isActive?: boolean;
     }
 ): Promise<{ success: boolean; error?: string }> {
@@ -144,7 +163,10 @@ export async function loginUser(
     password: string
 ): Promise<{ success: boolean; error?: string; user?: UserData }> {
     try {
-        const user = await prisma.user.findUnique({ where: { email } });
+        const user = await prisma.user.findUnique({
+            where: { email },
+            include: { role: true },
+        });
 
         if (!user) {
             return { success: false, error: 'Nieprawidłowy email lub hasło' };
@@ -159,12 +181,16 @@ export async function loginUser(
             return { success: false, error: 'Nieprawidłowy email lub hasło' };
         }
 
+        const permissions = JSON.parse(user.role.permissions) as string[];
+
         // Create JWT token
         const token = jwt.sign(
             {
                 userId: user.id,
                 email: user.email,
-                role: user.role,
+                roleId: user.roleId,
+                roleName: user.role.name,
+                permissions,
                 firstName: user.firstName,
                 lastName: user.lastName,
             },
@@ -189,7 +215,9 @@ export async function loginUser(
                 email: user.email,
                 firstName: user.firstName,
                 lastName: user.lastName,
-                role: user.role as UserRole,
+                roleId: user.roleId,
+                roleName: user.role.name,
+                permissions,
                 isActive: user.isActive,
                 createdAt: user.createdAt,
             },
@@ -217,7 +245,9 @@ export async function getCurrentUser(): Promise<UserData | null> {
         const decoded = jwt.verify(token, JWT_SECRET) as {
             userId: number;
             email: string;
-            role: UserRole;
+            roleId: number;
+            roleName: string;
+            permissions: string[];
             firstName: string;
             lastName: string;
         };
@@ -225,54 +255,37 @@ export async function getCurrentUser(): Promise<UserData | null> {
         // Get fresh user data from database
         const user = await prisma.user.findUnique({
             where: { id: decoded.userId },
-            select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-            },
+            include: { role: true },
         });
 
         if (!user || !user.isActive) return null;
 
-        return user as UserData;
+        return {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            roleId: user.roleId,
+            roleName: user.role.name,
+            permissions: JSON.parse(user.role.permissions) as string[],
+            isActive: user.isActive,
+            createdAt: user.createdAt,
+        };
     } catch {
         return null;
     }
 }
 
-// Check if user has required role
-export async function hasRole(requiredRoles: UserRole[]): Promise<boolean> {
+// Check if current user has permission
+export async function hasPermission(permissionId: string): Promise<boolean> {
     const user = await getCurrentUser();
     if (!user) return false;
-    return requiredRoles.includes(user.role);
+    return user.permissions.includes(permissionId);
 }
 
-// Create initial admin user (run once)
-export async function createInitialAdmin(): Promise<{ success: boolean; error?: string }> {
-    try {
-        const existingAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-        if (existingAdmin) {
-            return { success: false, error: 'Admin już istnieje' };
-        }
-
-        const hashedPassword = await bcrypt.hash('admin123', 12);
-        await prisma.user.create({
-            data: {
-                email: 'j.fedko@fedpol.pl',
-                password: hashedPassword,
-                firstName: 'Józef',
-                lastName: 'Fedko',
-                role: 'ADMIN',
-            },
-        });
-
-        return { success: true };
-    } catch (error) {
-        console.error('Create admin error:', error);
-        return { success: false, error: 'Błąd tworzenia admina' };
-    }
+// Check if current user has any of the permissions
+export async function hasAnyPermission(permissionIds: string[]): Promise<boolean> {
+    const user = await getCurrentUser();
+    if (!user) return false;
+    return permissionIds.some(p => user.permissions.includes(p));
 }

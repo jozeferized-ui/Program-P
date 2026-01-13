@@ -6,8 +6,21 @@ const JWT_SECRET = new TextEncoder().encode(
     process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
 );
 
-// Routes that require admin/manager role
-const ADMIN_ROUTES = ['/settings'];
+// Map routes to required permissions
+const ROUTE_PERMISSIONS: Record<string, string> = {
+    '/finances': 'finances',
+    '/clients': 'clients',
+    '/projects': 'projects',
+    '/production': 'production',
+    '/management': 'management',
+    '/history': 'history',
+    '/suppliers': 'suppliers',
+    '/warehouse': 'warehouse',
+    '/documents': 'documents',
+    '/calendar': 'calendar',
+    '/trash': 'trash',
+    '/settings': 'settings',
+};
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
@@ -39,22 +52,25 @@ export async function middleware(request: NextRequest) {
     try {
         // Verify JWT token
         const { payload } = await jwtVerify(token, JWT_SECRET);
+        const permissions = payload.permissions as string[];
 
-        // Check role for admin routes
-        if (ADMIN_ROUTES.some(route => pathname.startsWith(route))) {
-            const role = payload.role as string;
-            if (role !== 'ADMIN' && role !== 'MANAGER') {
-                // Redirect non-admin users to home
-                const homeUrl = new URL('/', request.url);
-                return NextResponse.redirect(homeUrl);
+        // Check permission for specific routes
+        for (const [route, requiredPermission] of Object.entries(ROUTE_PERMISSIONS)) {
+            if (pathname.startsWith(route)) {
+                if (!permissions.includes(requiredPermission)) {
+                    // Redirect to home if no permission
+                    const homeUrl = new URL('/', request.url);
+                    return NextResponse.redirect(homeUrl);
+                }
+                break;
             }
         }
 
         // Add user info to headers for server components
         const requestHeaders = new Headers(request.headers);
         requestHeaders.set('x-user-id', String(payload.userId));
-        requestHeaders.set('x-user-role', String(payload.role));
-        requestHeaders.set('x-user-email', String(payload.email));
+        requestHeaders.set('x-user-role', String(payload.roleName));
+        requestHeaders.set('x-user-permissions', JSON.stringify(permissions));
 
         return NextResponse.next({
             request: {

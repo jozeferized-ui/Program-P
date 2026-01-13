@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Edit2, Trash2, KeyRound, Check, X, Loader2, Shield, User, Eye, Settings } from 'lucide-react';
+import { UserPlus, Edit2, KeyRound, Check, X, Loader2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,44 +9,26 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { getUsers, createUser, updateUser, resetUserPassword, type UserData, type UserRole } from '@/actions/users';
-
-const ROLE_LABELS: Record<UserRole, string> = {
-    ADMIN: 'Administrator',
-    MANAGER: 'Manager',
-    USER: 'Użytkownik',
-    VIEWER: 'Podgląd',
-};
-
-const ROLE_COLORS: Record<UserRole, string> = {
-    ADMIN: 'bg-red-500/20 text-red-400 border-red-500/30',
-    MANAGER: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    USER: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    VIEWER: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-};
-
-const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
-    ADMIN: <Shield className="w-3 h-3" />,
-    MANAGER: <Settings className="w-3 h-3" />,
-    USER: <User className="w-3 h-3" />,
-    VIEWER: <Eye className="w-3 h-3" />,
-};
+import { getUsers, createUser, updateUser, resetUserPassword, type UserData } from '@/actions/users';
+import { getRoles, type RoleData } from '@/actions/roles';
 
 export function UserManager() {
     const [users, setUsers] = useState<UserData[]>([]);
+    const [roles, setRoles] = useState<RoleData[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<UserData | null>(null);
     const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(null);
 
     useEffect(() => {
-        loadUsers();
+        loadData();
     }, []);
 
-    const loadUsers = async () => {
+    const loadData = async () => {
         setLoading(true);
-        const data = await getUsers();
-        setUsers(data);
+        const [usersData, rolesData] = await Promise.all([getUsers(), getRoles()]);
+        setUsers(usersData);
+        setRoles(rolesData);
         setLoading(false);
     };
 
@@ -56,13 +38,13 @@ export function UserManager() {
             password: formData.get('password') as string,
             firstName: formData.get('firstName') as string,
             lastName: formData.get('lastName') as string,
-            role: formData.get('role') as UserRole,
+            roleId: parseInt(formData.get('roleId') as string),
         });
 
         if (result.success) {
             toast.success('Użytkownik utworzony');
             setIsAddOpen(false);
-            loadUsers();
+            loadData();
         } else {
             toast.error(result.error);
         }
@@ -75,14 +57,14 @@ export function UserManager() {
             email: formData.get('email') as string,
             firstName: formData.get('firstName') as string,
             lastName: formData.get('lastName') as string,
-            role: formData.get('role') as UserRole,
+            roleId: parseInt(formData.get('roleId') as string),
             isActive: formData.get('isActive') === 'true',
         });
 
         if (result.success) {
             toast.success('Użytkownik zaktualizowany');
             setEditingUser(null);
-            loadUsers();
+            loadData();
         } else {
             toast.error(result.error);
         }
@@ -147,16 +129,17 @@ export function UserManager() {
                                 <Input id="password" name="password" type="password" required minLength={6} />
                             </div>
                             <div>
-                                <Label htmlFor="role">Rola</Label>
-                                <Select name="role" defaultValue="USER">
+                                <Label htmlFor="roleId">Rola</Label>
+                                <Select name="roleId" defaultValue={roles.find(r => r.name === 'Użytkownik')?.id?.toString() || roles[0]?.id?.toString()}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="ADMIN">Administrator</SelectItem>
-                                        <SelectItem value="MANAGER">Manager</SelectItem>
-                                        <SelectItem value="USER">Użytkownik</SelectItem>
-                                        <SelectItem value="VIEWER">Podgląd</SelectItem>
+                                        {roles.map((role) => (
+                                            <SelectItem key={role.id} value={role.id.toString()}>
+                                                {role.name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -191,9 +174,9 @@ export function UserManager() {
                                 </td>
                                 <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                                 <td className="px-4 py-3">
-                                    <Badge variant="outline" className={ROLE_COLORS[user.role]}>
-                                        {ROLE_ICONS[user.role]}
-                                        <span className="ml-1">{ROLE_LABELS[user.role]}</span>
+                                    <Badge variant="outline" className="gap-1">
+                                        <Shield className="w-3 h-3" />
+                                        {user.roleName}
                                     </Badge>
                                 </td>
                                 <td className="px-4 py-3">
@@ -248,16 +231,17 @@ export function UserManager() {
                                 <Input id="editEmail" name="email" type="email" defaultValue={editingUser.email} required />
                             </div>
                             <div>
-                                <Label htmlFor="editRole">Rola</Label>
-                                <Select name="role" defaultValue={editingUser.role}>
+                                <Label htmlFor="editRoleId">Rola</Label>
+                                <Select name="roleId" defaultValue={editingUser.roleId.toString()}>
                                     <SelectTrigger>
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="ADMIN">Administrator</SelectItem>
-                                        <SelectItem value="MANAGER">Manager</SelectItem>
-                                        <SelectItem value="USER">Użytkownik</SelectItem>
-                                        <SelectItem value="VIEWER">Podgląd</SelectItem>
+                                        {roles.map((role) => (
+                                            <SelectItem key={role.id} value={role.id.toString()}>
+                                                {role.name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
