@@ -13,7 +13,7 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCenter, u
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { LucideIcon } from 'lucide-react';
-import { logout } from '@/actions/auth';
+import { logoutUser } from '@/actions/users';
 import { useRouter } from 'next/navigation';
 
 interface SidebarItem {
@@ -356,7 +356,7 @@ export function Sidebar() {
                                     <TooltipTrigger asChild>
                                         <button
                                             onClick={async () => {
-                                                await logout();
+                                                await logoutUser();
                                                 window.location.href = '/login';
                                             }}
                                             className="p-2 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-500 transition-colors"
@@ -375,7 +375,7 @@ export function Sidebar() {
                                 </div>
                                 <button
                                     onClick={async () => {
-                                        await logout();
+                                        await logoutUser();
                                         window.location.href = '/login';
                                     }}
                                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-500/10 transition-colors"
