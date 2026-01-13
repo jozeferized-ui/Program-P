@@ -232,6 +232,7 @@ model Tool {
   inspectionExpiryDate DateTime?
   protocolNumber     String?
   protocols          Protocol[]
+  scans              ToolScan[]
   isDeleted          Int      @default(0)
 }
 
@@ -310,4 +311,32 @@ model User {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// QR Code Scan Tracking
+model ToolScan {
+  id         Int      @id @default(autoincrement())
+  toolId     Int
+  tool       Tool     @relation(fields: [toolId], references: [id])
+  scannedAt  DateTime @default(now())
+  latitude   Float?
+  longitude  Float?
+  accuracy   Float?   // GPS accuracy in meters
+  ipAddress  String?
+  userAgent  String?  // Browser/device info
+  country    String?
+  city       String?
+}
+
+// Audit Log for tracking changes
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  action     String   // CREATE, UPDATE, DELETE
+  entity     String   // Project, Tool, Client, etc.
+  entityId   Int
+  oldData    String?  // JSON
+  newData    String?  // JSON
+  ipAddress  String?
+  timestamp  DateTime @default(now())
 }

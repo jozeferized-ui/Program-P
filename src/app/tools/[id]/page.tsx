@@ -10,10 +10,12 @@ import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { PrintStyles } from '@/components/management/PrintStyles';
+import { ScanTracker } from '@/components/tools/ScanTracker';
 
 export default async function ToolInfoPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
-    const tool = await getToolById(parseInt(id));
+    const toolId = parseInt(id);
+    const tool = await getToolById(toolId);
 
     if (!tool) {
         notFound();
@@ -26,6 +28,7 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
 
     return (
         <div className="min-h-screen overflow-y-auto touch-pan-y bg-slate-50 p-4 md:p-8 font-sans antialiased text-slate-900 flex justify-center">
+            <ScanTracker toolId={toolId} />
             <PrintStyles />
             {/* Watermark / Background */}
             <div className="fixed inset-0 opacity-[0.03] pointer-events-none select-none overflow-hidden flex flex-wrap gap-20 p-20">
