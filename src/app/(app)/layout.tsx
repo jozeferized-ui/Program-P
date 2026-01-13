@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { MobileHeader, MobileBottomNav } from "@/components/MobileNav";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 
 export default function AppLayout({
     children,
@@ -23,6 +24,9 @@ export default function AppLayout({
 
             {/* Mobile Bottom Nav */}
             <MobileBottomNav />
+
+            {/* Offline Indicator */}
+            <OfflineIndicator />
         </div>
     );
 }
