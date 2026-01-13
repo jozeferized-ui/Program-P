@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Pencil, Trash2, Calendar, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Calendar, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode, MapPin } from "lucide-react";
 import { AddToolDialog } from "./AddToolDialog";
 import { toast } from "sonner";
+import { ScanHistoryDialog } from "@/components/tools/ScanHistoryDialog";
 import { Badge } from "@/components/ui/badge";
 import { format, differenceInDays } from "date-fns";
 import { Workbook } from "exceljs";
@@ -61,6 +62,7 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
     const [selectedToolForQr, setSelectedToolForQr] = useState<Tool | null>(null);
     const [duplicateSerials, setDuplicateSerials] = useState<Set<string>>(new Set());
     const [selectedToolIds, setSelectedToolIds] = useState<Set<number>>(new Set());
+    const [scanHistoryTool, setScanHistoryTool] = useState<Tool | null>(null);
 
     useEffect(() => {
         setTools(initialTools);
@@ -532,6 +534,9 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                                 <Button variant="ghost" size="icon" onClick={() => handleOpenQr(tool)} title="Kod QR">
                                                     <QrCode className="h-4 w-4" />
                                                 </Button>
+                                                <Button variant="ghost" size="icon" onClick={() => setScanHistoryTool(tool)} title="Historia skanów">
+                                                    <MapPin className="h-4 w-4 text-emerald-600" />
+                                                </Button>
                                                 <Button variant="ghost" size="icon" onClick={() => handleEditClick(tool)}>
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
@@ -640,6 +645,15 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                 onOpenChange={setIsQrDialogOpen}
                 tool={selectedToolForQr}
             />
+
+            {scanHistoryTool && (
+                <ScanHistoryDialog
+                    toolId={scanHistoryTool.id!}
+                    toolName={scanHistoryTool.name}
+                    isOpen={!!scanHistoryTool}
+                    onClose={() => setScanHistoryTool(null)}
+                />
+            )}
         </div>
     );
 }
