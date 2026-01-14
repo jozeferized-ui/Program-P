@@ -13,6 +13,7 @@ export async function getTools() {
             include: {
                 assignedEmployees: true,
                 category: true,
+                transferredTo: true,
                 protocols: {
                     orderBy: { date: 'desc' },
                 }
@@ -53,6 +54,7 @@ export async function getToolById(id: number) {
             include: {
                 assignedEmployees: true,
                 category: true,
+                transferredTo: true,
                 protocols: {
                     orderBy: { date: 'desc' }
                 }

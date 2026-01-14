@@ -229,6 +229,10 @@ model Employee {
   projects  Project[]
   tools     Tool[] @relation("ToolEmployees")
   employeePermissions EmployeePermission[]
+  // Transfer relations
+  toolsTransferredTo Tool[] @relation("ToolTransferredTo")
+  transfersFrom      ToolTransfer[] @relation("TransferFrom")
+  transfersTo        ToolTransfer[] @relation("TransferTo")
 }
 
 model Tool {
@@ -242,13 +246,19 @@ model Tool {
   price              Float
   categoryId         Int?
   category           ToolCategory? @relation(fields: [categoryId], references: [id])
-  assignedEmployees          Employee[] @relation("ToolEmployees")
+  assignedEmployees  Employee[] @relation("ToolEmployees")
   lastInspectionDate DateTime?
   inspectionExpiryDate DateTime?
   protocolNumber     String?
   protocols          Protocol[]
   scans              ToolScan[]
   isDeleted          Int      @default(0)
+  // Transfer tracking
+  transferredToId    Int?
+  transferredTo      Employee? @relation("ToolTransferredTo", fields: [transferredToId], references: [id])
+  transferredAt      DateTime?
+  transferNotes      String?
+  transfers          ToolTransfer[]
 }
 
 model ToolCategory {
@@ -266,6 +276,21 @@ model Protocol {
   result         String
   content        String
   createdAt      DateTime @default(now())
+}
+
+// Tool transfer history
+model ToolTransfer {
+  id              Int       @id @default(autoincrement())
+  toolId          Int
+  tool            Tool      @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  fromEmployeeId  Int
+  fromEmployee    Employee  @relation("TransferFrom", fields: [fromEmployeeId], references: [id])
+  toEmployeeId    Int
+  toEmployee      Employee  @relation("TransferTo", fields: [toEmployeeId], references: [id])
+  transferredAt   DateTime  @default(now())
+  notes           String?
+  latitude        Float?
+  longitude       Float?
 }
 
 model EmployeePermission {

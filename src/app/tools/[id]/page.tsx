@@ -4,13 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const dynamic = 'force-dynamic';
-import { Calendar, Hammer, User, Tag, ShieldCheck, AlertTriangle, ChevronLeft } from 'lucide-react';
+import { Calendar, Hammer, User, Tag, ShieldCheck, AlertTriangle, ChevronLeft, ArrowRightLeft } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { PrintStyles } from '@/components/management/PrintStyles';
 import { ScanTracker } from '@/components/tools/ScanTracker';
+import { TransferSection } from '@/components/tools/TransferSection';
 
 export default async function ToolInfoPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -25,6 +26,10 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
     const isSoonExpired = tool.inspectionExpiryDate &&
         new Date(tool.inspectionExpiryDate) > new Date() &&
         new Date(tool.inspectionExpiryDate) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    const currentAssignee = tool.assignedEmployees.length > 0
+        ? tool.assignedEmployees.map((e: any) => `${e.firstName} ${e.lastName}`).join(', ')
+        : undefined;
 
     return (
         <div className="min-h-screen overflow-y-auto touch-pan-y bg-slate-50 p-4 md:p-8 font-sans antialiased text-slate-900 flex justify-center">
@@ -127,6 +132,26 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
                                 </div>
                             )}
 
+                            {/* Transferred To */}
+                            {(tool as any).transferredTo && (
+                                <div className="flex items-center gap-4 bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm">
+                                    <div className="p-2 bg-blue-500 rounded-lg shadow-sm text-white">
+                                        <ArrowRightLeft className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[9px] text-blue-600 font-black uppercase tracking-widest mb-0.5">Przekazano do</p>
+                                        <p className="font-bold text-blue-900 truncate">
+                                            {(tool as any).transferredTo.firstName} {(tool as any).transferredTo.lastName}
+                                        </p>
+                                        {(tool as any).transferredAt && (
+                                            <p className="text-[10px] text-blue-500">
+                                                {format(new Date((tool as any).transferredAt), 'dd.MM.yyyy HH:mm', { locale: pl })}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
                             {tool.protocolNumber && (
                                 <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 shadow-sm">
                                     <div className="p-2 bg-white rounded-lg border shadow-sm text-slate-400">
@@ -139,6 +164,13 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
                                 </div>
                             )}
                         </div>
+
+                        {/* Transfer Section */}
+                        <TransferSection
+                            toolId={toolId}
+                            currentAssignee={currentAssignee}
+                            currentTransferredTo={(tool as any).transferredTo}
+                        />
 
                         {/* Recent History */}
                         {tool.protocols && tool.protocols.length > 0 && (

@@ -465,6 +465,7 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                 <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('assignedEmployees')}>
                                     Przypisane osoby <ArrowUpDown className="ml-2 h-4 w-4 inline" />
                                 </TableHead>
+                                <TableHead>Przekazano</TableHead>
                                 <TableHead>Nr Protokołu</TableHead>
                                 <TableHead className="text-right">Akcje</TableHead>
                             </TableRow>
@@ -509,6 +510,20 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                                             {emp.firstName} {emp.lastName}
                                                         </div>
                                                     ))}
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground">-</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            {(tool as any).transferredTo ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                                                        {(tool as any).transferredTo.firstName[0]}{(tool as any).transferredTo.lastName[0]}
+                                                    </div>
+                                                    <span className="text-sm font-medium text-blue-700">
+                                                        {(tool as any).transferredTo.firstName} {(tool as any).transferredTo.lastName}
+                                                    </span>
                                                 </div>
                                             ) : (
                                                 <span className="text-muted-foreground">-</span>
