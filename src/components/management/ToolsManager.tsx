@@ -513,20 +513,17 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                         <TableCell>
                                             <div className="flex flex-col">
                                                 <span className="font-medium">{tool.name}</span>
-                                                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                    {tool.brand}{tool.model ? ` ${tool.model}` : ""} •
-                                                    <span className={tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) ? "text-orange-600 font-bold bg-orange-100 px-1 rounded flex items-center gap-0.5" : ""}>
-                                                        {tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) && <AlertTriangle className="h-3 w-3" />}
-                                                        {tool.serialNumber}
-                                                        {tool.brand}{tool.model ? ` ${tool.model}` : ""}
-                                                    </span>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {tool.brand}{tool.model ? ` ${tool.model}` : ""}
+                                                </span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                {tool.serialNumber || '-'}
+                                                <span className="font-mono text-muted-foreground">{tool.serialNumber || '-'}</span>
                                                 {tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) && (
-                                                    <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
+                                                    <Badge variant="destructive" className="text-[10px] h-5 px-1.5 flex items-center gap-0.5">
+                                                        <AlertTriangle className="h-3 w-3" />
                                                         DUPLIKAT
                                                     </Badge>
                                                 )}
