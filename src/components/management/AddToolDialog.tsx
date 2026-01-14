@@ -207,8 +207,8 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
                                 <FormItem>
                                     <FormLabel>Kategoria</FormLabel>
                                     <Select
-                                        value={field.value?.toString() || ""}
-                                        onValueChange={(val) => field.onChange(val ? parseInt(val) : undefined)}
+                                        value={field.value?.toString() || "none"}
+                                        onValueChange={(val) => field.onChange(val === "none" ? undefined : parseInt(val))}
                                     >
                                         <FormControl>
                                             <SelectTrigger>
@@ -216,7 +216,7 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="">Brak kategorii</SelectItem>
+                                            <SelectItem value="none">Brak kategorii</SelectItem>
                                             {categories.map(cat => (
                                                 <SelectItem key={cat.id} value={cat.id!.toString()}>
                                                     <div className="flex items-center gap-2">
