@@ -20,6 +20,7 @@ import { ToolProtocolDialog } from "./ToolProtocolDialog";
 import { ToolProtocolPreviewDialog } from "./ToolProtocolPreviewDialog";
 import { ProtocolHistoryDialog } from "./ProtocolHistoryDialog";
 import { ToolQrDialog } from "./ToolQrDialog";
+import { BulkPrintDialog } from "./BulkPrintDialog";
 import { saveProtocol } from "@/actions/protocols";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -63,6 +64,7 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
     const [duplicateSerials, setDuplicateSerials] = useState<Set<string>>(new Set());
     const [selectedToolIds, setSelectedToolIds] = useState<Set<number>>(new Set());
     const [scanHistoryTool, setScanHistoryTool] = useState<Tool | null>(null);
+    const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
 
     useEffect(() => {
         setTools(initialTools);
@@ -440,6 +442,30 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                 />
             </div>
 
+            {/* Bulk action toolbar */}
+            {selectedToolIds.size > 0 && (
+                <div className="flex items-center gap-4 p-3 bg-primary/10 rounded-xl border border-primary/20 no-print">
+                    <span className="font-bold text-primary">
+                        Zaznaczono: {selectedToolIds.size} narzędzi
+                    </span>
+                    <Button
+                        onClick={() => setIsBulkPrintOpen(true)}
+                        size="sm"
+                        className="font-bold"
+                    >
+                        <FileText className="mr-2 h-4 w-4" />
+                        Drukuj zbiorczo
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedToolIds(new Set())}
+                    >
+                        Odznacz wszystkie
+                    </Button>
+                </div>
+            )}
+
             <Card className="no-print">
                 <CardHeader>
                     <CardTitle>Lista narzędzi</CardTitle>
@@ -669,6 +695,13 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                     onClose={() => setScanHistoryTool(null)}
                 />
             )}
+
+            <BulkPrintDialog
+                open={isBulkPrintOpen}
+                onOpenChange={setIsBulkPrintOpen}
+                selectedTools={tools.filter(t => t.id && selectedToolIds.has(t.id))}
+            />
+
         </div>
     );
 }
