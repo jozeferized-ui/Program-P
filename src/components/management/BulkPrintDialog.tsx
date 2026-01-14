@@ -348,52 +348,67 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                     ${protocolsHtml}
                 </body>
                 <script>
-                    window.onload = () => {
+                    window.onload = async () => {
                         const qrItems = ${JSON.stringify(qrItems)};
                         
-                        Promise.all(qrItems.map(item => {
+                        for (const item of qrItems) {
                             const el = document.getElementById(item.id);
-                            if (el && typeof QRCode !== 'undefined') {
-                                return QRCode.toCanvas(item.url, { width: 80, margin: 1 })
-                                    .then(canvas => {
-                                        // Add ERIZED overlay
-                                        const ctx = canvas.getContext('2d');
-                                        const cx = canvas.width / 2;
-                                        const cy = canvas.height / 2;
-                                        
-                                        // White background for text
-                                        ctx.fillStyle = 'white';
-                                        ctx.fillRect(cx - 22, cy - 12, 44, 24);
-                                        ctx.strokeStyle = '#1a1a2e';
-                                        ctx.lineWidth = 1;
-                                        ctx.strokeRect(cx - 22, cy - 12, 44, 24);
-                                        
-                                        // ERIZED text
-                                        ctx.fillStyle = '#1a1a2e';
-                                        ctx.font = 'bold 7px Arial';
-                                        ctx.textAlign = 'center';
-                                        ctx.fillText('ERIZED', cx, cy - 4);
-                                        
-                                        // Initials and number
-                                        const parts = item.label.split('/')[1]?.split(' ') || ['', ''];
-                                        ctx.font = '6px Arial';
-                                        ctx.fillText('/' + (parts[0] || ''), cx, cy + 3);
-                                        ctx.font = 'bold 9px Arial';
-                                        ctx.fillText(parts[1] || '', cx, cy + 11);
-                                        
-                                        el.appendChild(canvas);
-                                    });
+                            if (!el) continue;
+                            
+                            try {
+                                // Create canvas for QR
+                                const canvas = document.createElement('canvas');
+                                canvas.width = 100;
+                                canvas.height = 100;
+                                
+                                // Generate QR code
+                                await QRCode.toCanvas(canvas, item.url, { 
+                                    width: 100, 
+                                    margin: 1,
+                                    errorCorrectionLevel: 'H'
+                                });
+                                
+                                // Add ERIZED overlay
+                                const ctx = canvas.getContext('2d');
+                                const cx = canvas.width / 2;
+                                const cy = canvas.height / 2;
+                                
+                                // White background for text
+                                ctx.fillStyle = 'white';
+                                ctx.fillRect(cx - 24, cy - 14, 48, 28);
+                                ctx.strokeStyle = '#1a1a2e';
+                                ctx.lineWidth = 1.5;
+                                ctx.strokeRect(cx - 24, cy - 14, 48, 28);
+                                
+                                // ERIZED text
+                                ctx.fillStyle = '#1a1a2e';
+                                ctx.font = 'bold 8px Arial';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText('ERIZED', cx, cy - 6);
+                                
+                                // Initials and number
+                                const parts = item.label.split('/')[1]?.split(' ') || ['', ''];
+                                ctx.font = '7px Arial';
+                                ctx.fillText('/' + (parts[0] || ''), cx, cy + 2);
+                                ctx.font = 'bold 10px Arial';
+                                ctx.fillText(parts[1] || '', cx, cy + 11);
+                                
+                                el.appendChild(canvas);
+                            } catch (err) {
+                                console.error('QR error for', item.id, err);
+                                el.innerHTML = '<div style="width:100px;height:100px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;">QR Error</div>';
                             }
-                            return Promise.resolve();
-                        })).then(() => {
-                            setTimeout(() => { window.print(); window.close(); }, 800);
-                        });
+                        }
+                        
+                        setTimeout(() => { window.print(); window.close(); }, 1000);
                     };
                 <\/script>
             </html>
         `);
         printWindow.document.close();
     };
+
 
 
     const handleClose = () => {
