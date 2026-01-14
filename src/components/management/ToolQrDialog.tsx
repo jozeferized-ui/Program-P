@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button';
 import { Tool } from '@/types';
 import { Download, Printer, QrCode } from 'lucide-react';
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 
 interface ToolQrDialogProps {
@@ -31,8 +31,10 @@ function formatToolNumber(id: number | undefined): string {
 }
 
 export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const qrContainerRef = useRef<HTMLDivElement>(null);
+    const outputCanvasRef = useRef<HTMLCanvasElement>(null);
     const [imageUrl, setImageUrl] = useState<string>('');
+    const [rendered, setRendered] = useState(false);
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const toolUrl = tool ? `${origin}/tools/${tool.id || 0}` : '';
@@ -41,52 +43,69 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
     const toolNumber = tool ? formatToolNumber(tool.id) : '0000';
     const brandLabel = `ERIZED/${initials} ${toolNumber}`;
 
-    // Generate image URL after QR renders
+    // Draw overlay on QR code
+    const drawOverlay = useCallback(() => {
+        const sourceCanvas = qrContainerRef.current?.querySelector('canvas');
+        const outputCanvas = outputCanvasRef.current;
+
+        if (!sourceCanvas || !outputCanvas) return;
+
+        const ctx = outputCanvas.getContext('2d');
+        if (!ctx) return;
+
+        const size = 280;
+        outputCanvas.width = size;
+        outputCanvas.height = size;
+
+        // Draw the QR code first
+        ctx.drawImage(sourceCanvas, 0, 0, size, size);
+
+        // Now draw the ERIZED overlay in the center
+        const labelWidth = size * 0.42;
+        const labelHeight = size * 0.25;
+        const x = (size - labelWidth) / 2;
+        const y = (size - labelHeight) / 2;
+
+        // White background for label
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x - 6, y - 6, labelWidth + 12, labelHeight + 12);
+
+        // Dark border
+        ctx.strokeStyle = '#1a1a2e';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x - 3, y - 3, labelWidth + 6, labelHeight + 6);
+
+        // ERIZED text
+        ctx.fillStyle = '#1a1a2e';
+        ctx.font = 'bold 18px Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('ERIZED', size / 2, y + labelHeight * 0.25);
+
+        // /Initials text  
+        ctx.font = 'bold 15px Arial, sans-serif';
+        ctx.fillText(`/${initials}`, size / 2, y + labelHeight * 0.52);
+
+        // Tool number
+        ctx.font = 'bold 22px Arial, sans-serif';
+        ctx.fillText(toolNumber, size / 2, y + labelHeight * 0.82);
+
+        // Save as data URL
+        setImageUrl(outputCanvas.toDataURL('image/png'));
+        setRendered(true);
+    }, [initials, toolNumber]);
+
+    // Trigger overlay drawing after QR renders
     useEffect(() => {
-        if (!open || !tool) return;
+        if (!open || !tool) {
+            setRendered(false);
+            return;
+        }
 
-        const timeout = setTimeout(() => {
-            const canvas = containerRef.current?.querySelector('canvas');
-            if (canvas) {
-                // Draw overlay on the QR code
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    const size = canvas.width;
-                    const labelWidth = size * 0.4;
-                    const labelHeight = size * 0.22;
-                    const x = (size - labelWidth) / 2;
-                    const y = (size - labelHeight) / 2;
-
-                    // White background
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(x - 4, y - 4, labelWidth + 8, labelHeight + 8);
-
-                    // Border
-                    ctx.strokeStyle = '#1a1a2e';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(x - 2, y - 2, labelWidth + 4, labelHeight + 4);
-
-                    // ERIZED text
-                    ctx.fillStyle = '#1a1a2e';
-                    ctx.font = `bold ${size * 0.055}px Arial, sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('ERIZED', size / 2, y + labelHeight * 0.25);
-
-                    // /Initials text
-                    ctx.font = `bold ${size * 0.05}px Arial, sans-serif`;
-                    ctx.fillText(`/${initials}`, size / 2, y + labelHeight * 0.5);
-
-                    // Number
-                    ctx.font = `bold ${size * 0.07}px Arial, sans-serif`;
-                    ctx.fillText(toolNumber, size / 2, y + labelHeight * 0.8);
-                }
-                setImageUrl(canvas.toDataURL('image/png'));
-            }
-        }, 100);
-
-        return () => clearTimeout(timeout);
-    }, [open, tool, initials, toolNumber]);
+        // Wait for QRCodeCanvas to render, then draw overlay
+        const timer = setTimeout(drawOverlay, 200);
+        return () => clearTimeout(timer);
+    }, [open, tool, drawOverlay]);
 
     if (!tool) return null;
 
@@ -126,17 +145,15 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                                 border-radius: 16px;
                                 background: #fff;
                             }
-                            .qr { margin-bottom: 16px; }
-                            .qr img { width: 220px; height: 220px; }
-                            .erized { font-size: 24px; font-weight: 900; letter-spacing: 3px; color: #1a1a2e; margin-bottom: 8px; }
-                            .name { font-weight: 800; font-size: 16px; text-transform: uppercase; color: #1a1a2e; margin-bottom: 4px; }
-                            .brand { font-weight: 600; font-size: 12px; color: #666; }
+                            .qr { margin-bottom: 12px; }
+                            .qr img { width: 240px; height: 240px; }
+                            .name { font-weight: 800; font-size: 18px; text-transform: uppercase; color: #1a1a2e; margin-bottom: 4px; }
+                            .brand { font-weight: 600; font-size: 13px; color: #666; }
                         </style>
                     </head>
                     <body>
                         <div class="card">
                             <div class="qr"><img src="${imageUrl}" alt="QR Code" /></div>
-                            <div class="erized">${brandLabel}</div>
                             <div class="name">${tool.name}</div>
                             <div class="brand">${tool.brand}${tool.model ? ` | ${tool.model}` : ""} | S/N: ${tool.serialNumber}</div>
                         </div>
@@ -170,27 +187,38 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 gap-4 my-4">
-                    <div ref={containerRef} className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-100">
+                    {/* Hidden QR source */}
+                    <div ref={qrContainerRef} className="hidden">
                         <QRCodeCanvas
                             value={toolUrl}
-                            size={220}
+                            size={280}
                             level="H"
                             includeMargin
                             bgColor="#ffffff"
                             fgColor="#1a1a2e"
                         />
                     </div>
+
+                    {/* Visible output with overlay */}
+                    <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-100">
+                        <canvas
+                            ref={outputCanvasRef}
+                            width={280}
+                            height={280}
+                            className="w-[220px] h-[220px]"
+                        />
+                    </div>
+
                     <div className="text-center">
-                        <p className="font-black text-2xl tracking-wider text-slate-900">{brandLabel}</p>
-                        <p className="font-bold text-lg uppercase text-slate-700 mt-1">{tool.name}</p>
+                        <p className="font-bold text-lg uppercase text-slate-700">{tool.name}</p>
                         <p className="text-xs text-slate-500 mt-1">{tool.brand}{tool.model ? ` | ${tool.model}` : ""} | S/N: {tool.serialNumber}</p>
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <Button onClick={handleDownload} variant="outline" className="flex-1 py-6 gap-2 rounded-xl font-bold">
+                    <Button onClick={handleDownload} variant="outline" className="flex-1 py-6 gap-2 rounded-xl font-bold" disabled={!rendered}>
                         <Download className="w-4 h-4" /> Pobierz
                     </Button>
-                    <Button onClick={handlePrint} className="flex-1 py-6 gap-2 rounded-xl font-bold shadow-lg shadow-primary/20">
+                    <Button onClick={handlePrint} className="flex-1 py-6 gap-2 rounded-xl font-bold shadow-lg shadow-primary/20" disabled={!rendered}>
                         <Printer className="w-4 h-4" /> Drukuj
                     </Button>
                 </div>
