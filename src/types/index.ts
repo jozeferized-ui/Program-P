@@ -223,6 +223,7 @@ export interface Tool {
 export interface ToolCategory {
   id?: number;
   name: string;
+  color: string;
 }
 
 export interface ProtocolData {

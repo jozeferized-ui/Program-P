@@ -16,10 +16,10 @@ export async function getToolCategories() {
     }
 }
 
-export async function createToolCategory(name: string) {
+export async function createToolCategory(name: string, color: string = '#059669') {
     try {
         const category = await (prisma as any).toolCategory.create({
-            data: { name }
+            data: { name, color }
         });
         revalidatePath('/management');
         return { success: true, data: category };

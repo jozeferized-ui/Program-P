@@ -118,10 +118,8 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                             ${showQr && qrDataUrl ? `
                                 <div style="position: relative; width: 55px; height: 55px;">
                                     <img src="${qrDataUrl}" width="55" height="55" style="display: block;"/>
-                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0px 2px; border: 0.5px solid #1a1a2e; font-size: 4px; text-align: center; line-height: 1.1;">
-                                        <div style="font-weight: bold;">ERIZED</div>
-                                        <div>/${initials}</div>
-                                        <div style="font-weight: bold; font-size: 5px;">${toolNumber}</div>
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0px 1px; font-size: 3px; text-align: center; line-height: 1;">
+                                        <div style="font-weight: bold; font-size: 4px;">${toolNumber}</div>
                                     </div>
                                 </div>
                             ` : ''}
@@ -130,18 +128,18 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                                 <svg width="55" height="55" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" r="48" fill="#059669" stroke="#064e3b" stroke-width="1"/>
                                     <circle cx="50" cy="50" r="40" fill="#e6f7f0" stroke="#064e3b" stroke-width="0.5"/>
-                                    <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.15)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
-                                    <text x="50" y="18" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
-                                    <text x="50" y="28" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${stickerName.substring(0, 14)}</text>
-                                    <text x="50" y=\"36\" text-anchor="middle" fill="#064e3b" font-size="3">S/N: ${serialNum.substring(0, 12)}</text>
-                                    <line x1="18" y1="40" x2="82" y2="40" stroke="#059669" stroke-width="0.5"/>
-                                    <text x="50" y="48" text-anchor="middle" fill="#666" font-size="3">Przegląd:</text>
-                                    <text x="50" y="55" text-anchor="middle" fill="#064e3b" font-size="4" font-weight="bold">${lastInspStr}</text>
-                                    <line x1="18" y1="60" x2="82" y2="60" stroke="#059669" stroke-width="0.5"/>
-                                    <text x="50" y="68" text-anchor="middle" fill="#059669" font-size="3" font-weight="bold">Ważna do:</text>
-                                    <text x="50" y="78" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${expiryStr}</text>
+                                    <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.12)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
+                                    <text x="50" y="17" text-anchor="middle" fill="#000" font-size="5" font-weight="bold">KONTROLA</text>
+                                    <text x="50" y="27" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${stickerName.substring(0, 14)}</text>
+                                    <text x="50" y="35" text-anchor="middle" fill="#000" font-size="3">S/N: ${serialNum.substring(0, 12)}</text>
+                                    <line x1="15" y1="39" x2="85" y2="39" stroke="#059669" stroke-width="0.5"/>
+                                    <text x="50" y="47" text-anchor="middle" fill="#000" font-size="4" font-weight="bold">Przegląd:</text>
+                                    <text x="50" y="56" text-anchor="middle" fill="#000" font-size="5" font-weight="bold">${lastInspStr}</text>
+                                    <line x1="15" y1="61" x2="85" y2="61" stroke="#059669" stroke-width="0.5"/>
+                                    <text x="50" y="70" text-anchor="middle" fill="#000" font-size="4" font-weight="bold">Ważna do:</text>
+                                    <text x="50" y="82" text-anchor="middle" fill="#000" font-size="6" font-weight="bold">${expiryStr}</text>
                                 </svg>
-                            ` : ''}
+                            ` : ''}}
                         </div>
                     `;
                 } else {
@@ -164,30 +162,28 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                                 ${showQr && qrDataUrl ? `
                                     <div style="position: relative; width: 70px; height: 70px;">
                                         <img src="${qrDataUrl}" width="70" height="70" style="display: block;"/>
-                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 1px 4px; border: 1px solid #1a1a2e; font-size: 5px; text-align: center; line-height: 1.2;">
-                                            <div style="font-weight: bold;">ERIZED</div>
-                                            <div>/${initials}</div>
-                                            <div style="font-weight: bold; font-size: 7px;">${toolNumber}</div>
+                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0 2px; font-size: 5px; text-align: center; line-height: 1;">
+                                            <div style="font-weight: bold; font-size: 6px;">${toolNumber}</div>
                                         </div>
                                     </div>
-                                ` : ''}
+                                ` : ''}}
                                 
                                 ${showSticker ? `
                                     <svg width="70" height="70" viewBox="0 0 100 100">
                                         <circle cx="50" cy="50" r="48" fill="#059669" stroke="#064e3b" stroke-width="1"/>
                                         <circle cx="50" cy="50" r="40" fill="#e6f7f0" stroke="#064e3b" stroke-width="0.5"/>
-                                        <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.15)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
-                                        <text x="50" y="20" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
-                                        <text x="50" y="30" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${stickerName.substring(0, 18)}</text>
-                                        <text x="50" y="38" text-anchor="middle" fill="#064e3b" font-size="3.5">S/N: ${serialNum}</text>
-                                        <line x1="18" y1="42" x2="82" y2="42" stroke="#059669" stroke-width="0.5"/>
-                                        <text x="50" y="50" text-anchor="middle" fill="#666" font-size="3.5">Przegląd:</text>
-                                        <text x="50" y="57" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${lastInspStr}</text>
-                                        <line x1="18" y1="62" x2="82" y2="62" stroke="#059669" stroke-width="0.5"/>
-                                        <text x="50" y="70" text-anchor="middle" fill="#059669" font-size="3.5" font-weight="bold">Ważna do:</text>
-                                        <text x="50" y="80" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">${expiryStr}</text>
+                                        <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.12)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
+                                        <text x="50" y="18" text-anchor="middle" fill="#000" font-size="5" font-weight="bold">KONTROLA</text>
+                                        <text x="50" y="28" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${stickerName.substring(0, 18)}</text>
+                                        <text x="50" y="36" text-anchor="middle" fill="#000" font-size="3.5">S/N: ${serialNum}</text>
+                                        <line x1="15" y1="40" x2="85" y2="40" stroke="#059669" stroke-width="0.5"/>
+                                        <text x="50" y="48" text-anchor="middle" fill="#000" font-size="4" font-weight="bold">Przegląd:</text>
+                                        <text x="50" y="57" text-anchor="middle" fill="#000" font-size="5" font-weight="bold">${lastInspStr}</text>
+                                        <line x1="15" y1="62" x2="85" y2="62" stroke="#059669" stroke-width="0.5"/>
+                                        <text x="50" y="71" text-anchor="middle" fill="#000" font-size="4" font-weight="bold">Ważna do:</text>
+                                        <text x="50" y="82" text-anchor="middle" fill="#000" font-size="6" font-weight="bold">${expiryStr}</text>
                                     </svg>
-                                ` : ''}
+                                ` : ''}}
                             </div>
                         </div>
                     `;

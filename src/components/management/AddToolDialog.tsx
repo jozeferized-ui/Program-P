@@ -11,9 +11,10 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tool, Employee } from "@/types";
+import { Tool, Employee, ToolCategory } from "@/types";
 import { format, addMonths } from "date-fns";
 import { Label } from "@/components/ui/label";
+import { getToolCategories } from "@/actions/toolCategories";
 
 const formSchema = z.object({
     name: z.string().min(1, "Nazwa jest wymagana"),
@@ -26,6 +27,7 @@ const formSchema = z.object({
     employeeIds: z.array(z.number()).default([]),
     lastInspectionDate: z.date().optional(),
     protocolNumber: z.string().optional(),
+    categoryId: z.number().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -59,6 +61,11 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
     const lastInspectionDate = form.watch("lastInspectionDate");
     const [expiryDate, setExpiryDate] = useState<Date | undefined>(undefined);
     const [inspectionInterval, setInspectionInterval] = useState<string>("6");
+    const [categories, setCategories] = useState<ToolCategory[]>([]);
+
+    useEffect(() => {
+        getToolCategories().then(setCategories);
+    }, []);
 
     useEffect(() => {
         if (lastInspectionDate) {
@@ -81,6 +88,7 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
                 employeeIds: initialData.assignedEmployees?.map(e => e.id!) || [],
                 lastInspectionDate: initialData.lastInspectionDate ? new Date(initialData.lastInspectionDate) : undefined,
                 protocolNumber: initialData.protocolNumber || "",
+                categoryId: initialData.categoryId || undefined,
             });
             // Try to guess interval or default to 6 in input
             if (initialData.lastInspectionDate && initialData.inspectionExpiryDate) {
@@ -190,7 +198,45 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
                                 </FormItem>
                             )}
                         />
+
+                        {/* Category dropdown */}
+                        <FormField
+                            control={form.control}
+                            name="categoryId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Kategoria</FormLabel>
+                                    <Select
+                                        value={field.value?.toString() || ""}
+                                        onValueChange={(val) => field.onChange(val ? parseInt(val) : undefined)}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Wybierz kategorię" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="">Brak kategorii</SelectItem>
+                                            {categories.map(cat => (
+                                                <SelectItem key={cat.id} value={cat.id!.toString()}>
+                                                    <div className="flex items-center gap-2">
+                                                        <div
+                                                            className="w-3 h-3 rounded-full"
+                                                            style={{ backgroundColor: cat.color }}
+                                                        />
+                                                        {cat.name}
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                         <div className="grid grid-cols-2 gap-4">
+
                             <FormField
                                 control={form.control}
                                 name="purchaseDate"

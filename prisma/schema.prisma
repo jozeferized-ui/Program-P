@@ -264,6 +264,7 @@ model Tool {
 model ToolCategory {
   id    Int    @id @default(autoincrement())
   name  String @unique
+  color String @default("#059669")
   tools Tool[]
 }
 
