@@ -65,11 +65,18 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
         // Tool cards
         if (showQr || showSticker || showInfo) {
             filteredTools.forEach(tool => {
-                const lastInsp = tool.lastInspectionDate ? new Date(tool.lastInspectionDate) : new Date();
-                const expiry = tool.inspectionExpiryDate ? new Date(tool.inspectionExpiryDate) : new Date(lastInsp.getTime() + 365 * 24 * 60 * 60 * 1000);
+                const lastInsp = tool.lastInspectionDate ? new Date(tool.lastInspectionDate) : null;
+                const expiry = tool.inspectionExpiryDate ? new Date(tool.inspectionExpiryDate) : null;
                 const toolUrl = `${origin}/tools/${tool.id || 0}`;
                 const initials = getInitials(tool.assignedEmployees);
                 const toolNumber = String(tool.id || 0).padStart(4, '0');
+                const brandLabel = `ERIZED/${initials} ${toolNumber}`;
+
+                // Format dates
+                const lastInspStr = lastInsp ? lastInsp.toLocaleDateString('pl-PL') : '-';
+                const expiryStr = expiry ? expiry.toLocaleDateString('pl-PL') : '-';
+                const deviceName = (tool.name || '-').substring(0, 20);
+                const serialNum = (tool.serialNumber || '-').substring(0, 15);
 
                 cardsHtml += `
                     <div class="tool-card" style="page-break-inside: avoid; border: 2px solid #059669; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-family: Arial, sans-serif;">
@@ -85,63 +92,69 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                             </div>
                         ` : ''}
                         
-                        <div style="display: flex; gap: 20px; align-items: center; justify-content: center;">
+                        <div style="display: flex; gap: 16px; align-items: center; justify-content: center;">
                             ${showQr ? `
-                                <div style="text-align: center;">
-                                    <div id="qr-${tool.id}" style="width: 80px; height: 80px; background: #f0f0f0;"></div>
-                                    <p style="margin: 4px 0 0 0; font-size: 8px; font-weight: bold;">ERIZED/${initials} ${toolNumber}</p>
+                                <div style="text-align: center; position: relative; width: 100px; height: 100px;">
+                                    <!-- QR with ERIZED overlay -->
+                                    <svg width="100" height="100" viewBox="0 0 100 100" style="background: white; border: 1px solid #e0e0e0; border-radius: 8px;">
+                                        <!-- QR placeholder pattern -->
+                                        <rect x="5" y="5" width="90" height="90" fill="url(#qrPattern${tool.id})"/>
+                                        <defs>
+                                            <pattern id="qrPattern${tool.id}" patternUnits="userSpaceOnUse" width="8" height="8">
+                                                <rect width="4" height="4" fill="#1a1a2e"/>
+                                                <rect x="4" y="4" width="4" height="4" fill="#1a1a2e"/>
+                                            </pattern>
+                                        </defs>
+                                        <!-- Corner markers -->
+                                        <rect x="8" y="8" width="20" height="20" fill="#1a1a2e"/>
+                                        <rect x="11" y="11" width="14" height="14" fill="white"/>
+                                        <rect x="14" y="14" width="8" height="8" fill="#1a1a2e"/>
+                                        <rect x="72" y="8" width="20" height="20" fill="#1a1a2e"/>
+                                        <rect x="75" y="11" width="14" height="14" fill="white"/>
+                                        <rect x="78" y="14" width="8" height="8" fill="#1a1a2e"/>
+                                        <rect x="8" y="72" width="20" height="20" fill="#1a1a2e"/>
+                                        <rect x="11" y="75" width="14" height="14" fill="white"/>
+                                        <rect x="14" y="78" width="8" height="8" fill="#1a1a2e"/>
+                                        <!-- ERIZED overlay in center -->
+                                        <rect x="28" y="35" width="44" height="30" fill="white" stroke="#1a1a2e" stroke-width="2"/>
+                                        <text x="50" y="45" text-anchor="middle" fill="#1a1a2e" font-size="7" font-weight="bold">ERIZED</text>
+                                        <text x="50" y="53" text-anchor="middle" fill="#1a1a2e" font-size="6">/${initials}</text>
+                                        <text x="50" y="62" text-anchor="middle" fill="#1a1a2e" font-size="9" font-weight="bold">${toolNumber}</text>
+                                    </svg>
                                 </div>
                             ` : ''}
                             
                             ${showSticker ? `
-                                <div style="text-align: center;">
-                                    <svg width="80" height="80" viewBox="0 0 100 100">
+                                <div style="text-align: center; width: 100px; height: 100px;">
+                                    <!-- Improved inspection sticker -->
+                                    <svg width="100" height="100" viewBox="0 0 100 100">
                                         <!-- Outer green ring -->
                                         <circle cx="50" cy="50" r="48" fill="#059669" stroke="#064e3b" stroke-width="1"/>
                                         <!-- Inner white circle -->
-                                        <circle cx="50" cy="50" r="35" fill="white" stroke="#064e3b" stroke-width="0.5"/>
+                                        <circle cx="50" cy="50" r="40" fill="white" stroke="#064e3b" stroke-width="0.5"/>
                                         
-                                        <!-- Month numbers -->
-                                        ${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => {
-                    const angle = (m * 30 - 90) * (Math.PI / 180);
-                    const x = 50 + Math.cos(angle) * 42;
-                    const y = 50 + Math.sin(angle) * 42;
-                    const isSelected = m === (expiry.getMonth() + 1);
-                    return `
-                                                ${isSelected ? `<circle cx="${x}" cy="${y}" r="5" fill="white"/>` : ''}
-                                                <text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" 
-                                                    fill="${isSelected ? '#064e3b' : 'white'}" 
-                                                    font-size="6" font-weight="${isSelected ? 'bold' : 'normal'}">
-                                                    ${m}
-                                                </text>
-                                            `;
-                }).join('')}
+                                        <!-- Title -->
+                                        <text x="50" y="22" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">KONTROLA</text>
                                         
-                                        <!-- Year numbers -->
-                                        ${[25, 26, 27].map((y, i) => {
-                    const angle = ((i - 1) * 35 + 90) * (Math.PI / 180);
-                    const x = 50 + Math.cos(angle) * 42;
-                    const yPos = 50 + Math.sin(angle) * 42;
-                    const isSelected = y === (expiry.getFullYear() % 100);
-                    return `
-                                                ${isSelected ? `<circle cx="${x}" cy="${yPos}" r="5" fill="white"/>` : ''}
-                                                <text x="${x}" y="${yPos}" text-anchor="middle" dominant-baseline="central" 
-                                                    fill="${isSelected ? '#064e3b' : 'white'}" 
-                                                    font-size="6" font-weight="${isSelected ? 'bold' : 'normal'}">
-                                                    ${y}
-                                                </text>
-                                            `;
-                }).join('')}
+                                        <!-- Device name -->
+                                        <text x="50" y="32" text-anchor="middle" fill="#059669" font-size="5" font-weight="bold">${deviceName}</text>
                                         
-                                        <!-- Center text -->
-                                        <text x="50" y="38" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">Skontrolowano</text>
-                                        <text x="50" y="46" text-anchor="middle" fill="#064e3b" font-size="4">Nr: ${(tool.serialNumber || '-').substring(0, 10)}</text>
-                                        <text x="50" y="52" text-anchor="middle" fill="#064e3b" font-size="4">${(tool.model || tool.brand || '-').substring(0, 12)}</text>
-                                        <line x1="26" y1="57" x2="74" y2="57" stroke="#064e3b" stroke-width="0.5"/>
-                                        <text x="50" y="63" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">Nast. kontrola</text>
-                                        <text x="50" y="70" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">
-                                            ${String(expiry.getMonth() + 1).padStart(2, '0')}/${expiry.getFullYear()}
-                                        </text>
+                                        <!-- Serial number -->
+                                        <text x="50" y="40" text-anchor="middle" fill="#064e3b" font-size="4">S/N: ${serialNum}</text>
+                                        
+                                        <!-- Divider -->
+                                        <line x1="20" y1="45" x2="80" y2="45" stroke="#059669" stroke-width="0.5"/>
+                                        
+                                        <!-- Inspection date -->
+                                        <text x="50" y="54" text-anchor="middle" fill="#666" font-size="4">Data przeglądu:</text>
+                                        <text x="50" y="62" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${lastInspStr}</text>
+                                        
+                                        <!-- Divider -->
+                                        <line x1="20" y1="67" x2="80" y2="67" stroke="#059669" stroke-width="0.5"/>
+                                        
+                                        <!-- Next inspection -->
+                                        <text x="50" y="75" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">Ważna do:</text>
+                                        <text x="50" y="84" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">${expiryStr}</text>
                                     </svg>
                                 </div>
                             ` : ''}
@@ -150,6 +163,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                 `;
             });
         }
+
 
         // Protocols
         let protocolsHtml = '';
