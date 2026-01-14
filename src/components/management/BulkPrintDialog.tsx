@@ -84,8 +84,16 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
 
         let cardsHtml = '';
 
-        // Tool cards - compact horizontal layout
+        // Determine if we're in grid mode (no info, just QR and/or stickers)
+        const gridMode = !showInfo && (showQr || showSticker);
+
+        // Tool cards
         if (showQr || showSticker || showInfo) {
+            // Grid container for compact QR/sticker only mode
+            if (gridMode) {
+                cardsHtml += `<div style="display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-start;">`;
+            }
+
             filteredTools.forEach(tool => {
                 const lastInsp = tool.lastInspectionDate ? new Date(tool.lastInspectionDate) : null;
                 const expiry = tool.inspectionExpiryDate ? new Date(tool.inspectionExpiryDate) : null;
@@ -99,71 +107,94 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                 const deviceName = (tool.name || '-').substring(0, 25);
                 const serialNum = (tool.serialNumber || '-').substring(0, 18);
 
-                cardsHtml += `
-                    <div class="tool-card" style="page-break-inside: avoid; border: 1.5px solid #059669; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-family: Arial, sans-serif; display: flex; align-items: center; gap: 12px;">
-                        ${showInfo ? `
-                            <div style="flex: 1; min-width: 0;">
-                                <h3 style="margin: 0 0 2px 0; font-size: 13px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tool.name}</h3>
-                                <p style="margin: 0; font-size: 10px; color: #666;">
-                                    ${tool.brand || ''} ${tool.model ? `| ${tool.model}` : ''} | <strong>S/N: ${tool.serialNumber}</strong>
-                                </p>
-                                <p style="margin: 2px 0 0 0; font-size: 9px; color: #059669; font-weight: bold;">
-                                    ${(tool.assignedEmployees || []).map((e: any) => `${e.firstName} ${e.lastName}`).join(', ') || '-'}
-                                </p>
-                            </div>
-                        ` : ''}
-                        
-                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                if (gridMode) {
+                    // Compact grid items - just QR and/or sticker side by side
+                    cardsHtml += `
+                        <div style="display: flex; gap: 2px; page-break-inside: avoid;">
                             ${showQr && qrDataUrl ? `
-                                <div style="position: relative; width: 70px; height: 70px;">
-                                    <img src="${qrDataUrl}" width="70" height="70" style="display: block;"/>
-                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 1px 4px; border: 1px solid #1a1a2e; font-size: 5px; text-align: center; line-height: 1.2;">
+                                <div style="position: relative; width: 55px; height: 55px;">
+                                    <img src="${qrDataUrl}" width="55" height="55" style="display: block;"/>
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0px 2px; border: 0.5px solid #1a1a2e; font-size: 4px; text-align: center; line-height: 1.1;">
                                         <div style="font-weight: bold;">ERIZED</div>
                                         <div>/${initials}</div>
-                                        <div style="font-weight: bold; font-size: 7px;">${toolNumber}</div>
+                                        <div style="font-weight: bold; font-size: 5px;">${toolNumber}</div>
                                     </div>
                                 </div>
                             ` : ''}
                             
                             ${showSticker ? `
-                                <svg width="70" height="70" viewBox="0 0 100 100">
-                                    <!-- Outer green ring -->
+                                <svg width="55" height="55" viewBox="0 0 100 100">
                                     <circle cx="50" cy="50" r="48" fill="#059669" stroke="#064e3b" stroke-width="1"/>
-                                    <!-- Inner circle with light green background -->
                                     <circle cx="50" cy="50" r="40" fill="#e6f7f0" stroke="#064e3b" stroke-width="0.5"/>
-                                    
-                                    <!-- ERIZED watermark -->
                                     <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.15)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
-                                    
-                                    <!-- Title -->
-                                    <text x="50" y="20" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
-                                    
-                                    <!-- Device name -->
-                                    <text x="50" y="30" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${deviceName.substring(0, 18)}</text>
-                                    
-                                    <!-- Serial number -->
-                                    <text x="50" y="38" text-anchor="middle" fill="#064e3b" font-size="3.5">S/N: ${serialNum}</text>
-                                    
-                                    <!-- Divider -->
-                                    <line x1="18" y1="42" x2="82" y2="42" stroke="#059669" stroke-width="0.5"/>
-                                    
-                                    <!-- Inspection date -->
-                                    <text x="50" y="50" text-anchor="middle" fill="#666" font-size="3.5">Przegląd:</text>
-                                    <text x="50" y="57" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${lastInspStr}</text>
-                                    
-                                    <!-- Divider -->
-                                    <line x1="18" y1="62" x2="82" y2="62" stroke="#059669" stroke-width="0.5"/>
-                                    
-                                    <!-- Next inspection -->
-                                    <text x="50" y="70" text-anchor="middle" fill="#059669" font-size="3.5" font-weight="bold">Ważna do:</text>
-                                    <text x="50" y="80" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">${expiryStr}</text>
+                                    <text x="50" y="18" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
+                                    <text x="50" y="28" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${deviceName.substring(0, 14)}</text>
+                                    <text x="50" y=\"36\" text-anchor="middle" fill="#064e3b" font-size="3">S/N: ${serialNum.substring(0, 12)}</text>
+                                    <line x1="18" y1="40" x2="82" y2="40" stroke="#059669" stroke-width="0.5"/>
+                                    <text x="50" y="48" text-anchor="middle" fill="#666" font-size="3">Przegląd:</text>
+                                    <text x="50" y="55" text-anchor="middle" fill="#064e3b" font-size="4" font-weight="bold">${lastInspStr}</text>
+                                    <line x1="18" y1="60" x2="82" y2="60" stroke="#059669" stroke-width="0.5"/>
+                                    <text x="50" y="68" text-anchor="middle" fill="#059669" font-size="3" font-weight="bold">Ważna do:</text>
+                                    <text x="50" y="78" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${expiryStr}</text>
                                 </svg>
                             ` : ''}
                         </div>
-                    </div>
-                `;
+                    `;
+                } else {
+                    // Full card with info
+                    cardsHtml += `
+                        <div class="tool-card" style="page-break-inside: avoid; border: 1.5px solid #059669; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-family: Arial, sans-serif; display: flex; align-items: center; gap: 12px;">
+                            ${showInfo ? `
+                                <div style="flex: 1; min-width: 0;">
+                                    <h3 style="margin: 0 0 2px 0; font-size: 13px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tool.name}</h3>
+                                    <p style="margin: 0; font-size: 10px; color: #666;">
+                                        ${tool.brand || ''} ${tool.model ? `| ${tool.model}` : ''} | <strong>S/N: ${tool.serialNumber}</strong>
+                                    </p>
+                                    <p style="margin: 2px 0 0 0; font-size: 9px; color: #059669; font-weight: bold;">
+                                        ${(tool.assignedEmployees || []).map((e: any) => `${e.firstName} ${e.lastName}`).join(', ') || '-'}
+                                    </p>
+                                </div>
+                            ` : ''}
+                            
+                            <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
+                                ${showQr && qrDataUrl ? `
+                                    <div style="position: relative; width: 70px; height: 70px;">
+                                        <img src="${qrDataUrl}" width="70" height="70" style="display: block;"/>
+                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 1px 4px; border: 1px solid #1a1a2e; font-size: 5px; text-align: center; line-height: 1.2;">
+                                            <div style="font-weight: bold;">ERIZED</div>
+                                            <div>/${initials}</div>
+                                            <div style="font-weight: bold; font-size: 7px;">${toolNumber}</div>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                                
+                                ${showSticker ? `
+                                    <svg width="70" height="70" viewBox="0 0 100 100">
+                                        <circle cx="50" cy="50" r="48" fill="#059669" stroke="#064e3b" stroke-width="1"/>
+                                        <circle cx="50" cy="50" r="40" fill="#e6f7f0" stroke="#064e3b" stroke-width="0.5"/>
+                                        <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.15)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
+                                        <text x="50" y="20" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
+                                        <text x="50" y="30" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${deviceName.substring(0, 18)}</text>
+                                        <text x="50" y="38" text-anchor="middle" fill="#064e3b" font-size="3.5">S/N: ${serialNum}</text>
+                                        <line x1="18" y1="42" x2="82" y2="42" stroke="#059669" stroke-width="0.5"/>
+                                        <text x="50" y="50" text-anchor="middle" fill="#666" font-size="3.5">Przegląd:</text>
+                                        <text x="50" y="57" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${lastInspStr}</text>
+                                        <line x1="18" y1="62" x2="82" y2="62" stroke="#059669" stroke-width="0.5"/>
+                                        <text x="50" y="70" text-anchor="middle" fill="#059669" font-size="3.5" font-weight="bold">Ważna do:</text>
+                                        <text x="50" y="80" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">${expiryStr}</text>
+                                    </svg>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                }
             });
+
+            if (gridMode) {
+                cardsHtml += `</div>`;
+            }
         }
+
 
 
 
