@@ -84,7 +84,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
 
         let cardsHtml = '';
 
-        // Tool cards
+        // Tool cards - compact horizontal layout
         if (showQr || showSticker || showInfo) {
             filteredTools.forEach(tool => {
                 const lastInsp = tool.lastInspectionDate ? new Date(tool.lastInspectionDate) : null;
@@ -96,77 +96,75 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                 // Format dates
                 const lastInspStr = lastInsp ? lastInsp.toLocaleDateString('pl-PL') : '-';
                 const expiryStr = expiry ? expiry.toLocaleDateString('pl-PL') : '-';
-                const deviceName = (tool.name || '-').substring(0, 20);
-                const serialNum = (tool.serialNumber || '-').substring(0, 15);
+                const deviceName = (tool.name || '-').substring(0, 25);
+                const serialNum = (tool.serialNumber || '-').substring(0, 18);
 
                 cardsHtml += `
-                    <div class="tool-card" style="page-break-inside: avoid; border: 2px solid #059669; border-radius: 12px; padding: 16px; margin-bottom: 16px; font-family: Arial, sans-serif;">
+                    <div class="tool-card" style="page-break-inside: avoid; border: 1.5px solid #059669; border-radius: 8px; padding: 10px; margin-bottom: 8px; font-family: Arial, sans-serif; display: flex; align-items: center; gap: 12px;">
                         ${showInfo ? `
-                            <div style="margin-bottom: 12px;">
-                                <h2 style="margin: 0 0 4px 0; font-size: 16px; font-weight: bold; text-transform: uppercase;">${tool.name}</h2>
-                                <p style="margin: 0; font-size: 12px; color: #666;">
-                                    ${tool.brand || ''} ${tool.model ? `| ${tool.model}` : ''} | S/N: ${tool.serialNumber}
+                            <div style="flex: 1; min-width: 0;">
+                                <h3 style="margin: 0 0 2px 0; font-size: 13px; font-weight: bold; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${tool.name}</h3>
+                                <p style="margin: 0; font-size: 10px; color: #666;">
+                                    ${tool.brand || ''} ${tool.model ? `| ${tool.model}` : ''} | <strong>S/N: ${tool.serialNumber}</strong>
                                 </p>
-                                <p style="margin: 4px 0 0 0; font-size: 11px; color: #059669; font-weight: bold;">
-                                    Przypisane do: ${(tool.assignedEmployees || []).map((e: any) => `${e.firstName} ${e.lastName}`).join(', ') || '-'}
+                                <p style="margin: 2px 0 0 0; font-size: 9px; color: #059669; font-weight: bold;">
+                                    ${(tool.assignedEmployees || []).map((e: any) => `${e.firstName} ${e.lastName}`).join(', ') || '-'}
                                 </p>
                             </div>
                         ` : ''}
                         
-                        <div style="display: flex; gap: 16px; align-items: center; justify-content: center;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                             ${showQr && qrDataUrl ? `
-                                <div style="text-align: center; position: relative;">
-                                    <div style="position: relative; width: 100px; height: 100px;">
-                                        <img src="${qrDataUrl}" width="100" height="100" style="display: block;"/>
-                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2px 6px; border: 1px solid #1a1a2e; font-size: 7px; text-align: center; line-height: 1.3;">
-                                            <div style="font-weight: bold;">ERIZED</div>
-                                            <div>/${initials}</div>
-                                            <div style="font-weight: bold; font-size: 9px;">${toolNumber}</div>
-                                        </div>
+                                <div style="position: relative; width: 70px; height: 70px;">
+                                    <img src="${qrDataUrl}" width="70" height="70" style="display: block;"/>
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 1px 4px; border: 1px solid #1a1a2e; font-size: 5px; text-align: center; line-height: 1.2;">
+                                        <div style="font-weight: bold;">ERIZED</div>
+                                        <div>/${initials}</div>
+                                        <div style="font-weight: bold; font-size: 7px;">${toolNumber}</div>
                                     </div>
                                 </div>
                             ` : ''}
-
                             
                             ${showSticker ? `
-                                <div style="text-align: center; width: 100px; height: 100px;">
-                                    <!-- Improved inspection sticker -->
-                                    <svg width="100" height="100" viewBox="0 0 100 100">
-                                        <!-- Outer green ring -->
-                                        <circle cx="50" cy="50" r="48" fill="#059669" stroke="#064e3b" stroke-width="1"/>
-                                        <!-- Inner white circle -->
-                                        <circle cx="50" cy="50" r="40" fill="white" stroke="#064e3b" stroke-width="0.5"/>
-                                        
-                                        <!-- Title -->
-                                        <text x="50" y="22" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">KONTROLA</text>
-                                        
-                                        <!-- Device name -->
-                                        <text x="50" y="32" text-anchor="middle" fill="#059669" font-size="5" font-weight="bold">${deviceName}</text>
-                                        
-                                        <!-- Serial number -->
-                                        <text x="50" y="40" text-anchor="middle" fill="#064e3b" font-size="4">S/N: ${serialNum}</text>
-                                        
-                                        <!-- Divider -->
-                                        <line x1="20" y1="45" x2="80" y2="45" stroke="#059669" stroke-width="0.5"/>
-                                        
-                                        <!-- Inspection date -->
-                                        <text x="50" y="54" text-anchor="middle" fill="#666" font-size="4">Data przeglądu:</text>
-                                        <text x="50" y="62" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${lastInspStr}</text>
-                                        
-                                        <!-- Divider -->
-                                        <line x1="20" y1="67" x2="80" y2="67" stroke="#059669" stroke-width="0.5"/>
-                                        
-                                        <!-- Next inspection -->
-                                        <text x="50" y="75" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">Ważna do:</text>
-                                        <text x="50" y="84" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">${expiryStr}</text>
-                                    </svg>
-                                </div>
+                                <svg width="70" height="70" viewBox="0 0 100 100">
+                                    <!-- Outer green ring -->
+                                    <circle cx="50" cy="50" r="48" fill="#059669" stroke="#064e3b" stroke-width="1"/>
+                                    <!-- Inner circle with light green background -->
+                                    <circle cx="50" cy="50" r="40" fill="#e6f7f0" stroke="#064e3b" stroke-width="0.5"/>
+                                    
+                                    <!-- ERIZED watermark -->
+                                    <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.15)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
+                                    
+                                    <!-- Title -->
+                                    <text x="50" y="20" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
+                                    
+                                    <!-- Device name -->
+                                    <text x="50" y="30" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${deviceName.substring(0, 18)}</text>
+                                    
+                                    <!-- Serial number -->
+                                    <text x="50" y="38" text-anchor="middle" fill="#064e3b" font-size="3.5">S/N: ${serialNum}</text>
+                                    
+                                    <!-- Divider -->
+                                    <line x1="18" y1="42" x2="82" y2="42" stroke="#059669" stroke-width="0.5"/>
+                                    
+                                    <!-- Inspection date -->
+                                    <text x="50" y="50" text-anchor="middle" fill="#666" font-size="3.5">Przegląd:</text>
+                                    <text x="50" y="57" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">${lastInspStr}</text>
+                                    
+                                    <!-- Divider -->
+                                    <line x1="18" y1="62" x2="82" y2="62" stroke="#059669" stroke-width="0.5"/>
+                                    
+                                    <!-- Next inspection -->
+                                    <text x="50" y="70" text-anchor="middle" fill="#059669" font-size="3.5" font-weight="bold">Ważna do:</text>
+                                    <text x="50" y="80" text-anchor="middle" fill="#064e3b" font-size="6" font-weight="bold">${expiryStr}</text>
+                                </svg>
                             ` : ''}
                         </div>
                     </div>
                 `;
             });
         }
+
 
 
         // Protocols - matching ToolProtocolPdf format
