@@ -43,7 +43,7 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
     const toolNumber = tool ? formatToolNumber(tool.id) : '0000';
     const brandLabel = `ERIZED/${initials} ${toolNumber}`;
 
-    // Draw overlay on QR code
+    // Draw overlay on QR code - MINIMAL overlay
     const drawOverlay = useCallback(() => {
         const sourceCanvas = qrContainerRef.current?.querySelector('canvas');
         const outputCanvas = outputCanvasRef.current;
@@ -60,37 +60,25 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
         // Draw the QR code first
         ctx.drawImage(sourceCanvas, 0, 0, size, size);
 
-        // Now draw the ERIZED overlay in the center
-        const labelWidth = size * 0.42;
-        const labelHeight = size * 0.25;
+        // Minimal overlay - just tool number in small box
+        const labelWidth = size * 0.18;
+        const labelHeight = size * 0.10;
         const x = (size - labelWidth) / 2;
         const y = (size - labelHeight) / 2;
 
         // White background for label
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x - 6, y - 6, labelWidth + 12, labelHeight + 12);
+        ctx.fillRect(x - 2, y - 2, labelWidth + 4, labelHeight + 4);
 
-        // Dark border
-        ctx.strokeStyle = '#1a1a2e';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(x - 3, y - 3, labelWidth + 6, labelHeight + 6);
-
-        // ERIZED text
+        // Tool number only
         ctx.fillStyle = '#1a1a2e';
-        ctx.font = 'bold 18px Arial, sans-serif';
+        ctx.font = 'bold 14px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('ERIZED', size / 2, y + labelHeight * 0.25);
-
-        // /Initials text  
-        ctx.font = 'bold 15px Arial, sans-serif';
-        ctx.fillText(`/${initials}`, size / 2, y + labelHeight * 0.52);
-
-        // Tool number
-        ctx.font = 'bold 22px Arial, sans-serif';
-        ctx.fillText(toolNumber, size / 2, y + labelHeight * 0.82);
+        ctx.fillText(toolNumber, size / 2, size / 2);
 
         // Save as data URL
+
         setImageUrl(outputCanvas.toDataURL('image/png'));
         setRendered(true);
     }, [initials, toolNumber]);
