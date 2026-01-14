@@ -611,8 +611,6 @@ export function OrdersManager({ projectId, initialOrders, suppliers }: OrdersMan
         const { active, over } = event;
         setActiveId(null);
 
-        console.log('Drag End:', { active: active.id, over: over?.id });
-
         if (over && active.id !== over.id) {
             const orderId = parseInt(active.id as string);
             const newStatus = over.id as 'Pending' | 'Ordered' | 'Delivered';
@@ -628,8 +626,6 @@ export function OrdersManager({ projectId, initialOrders, suppliers }: OrdersMan
             if (!oldOrder) return;
 
             try {
-                console.log(`Updating order ${orderId} to status ${newStatus}`);
-
                 // Optimistically update UI
                 setOrders(prevOrders => prevOrders.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
 

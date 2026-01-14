@@ -243,7 +243,8 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
                                             type="color"
                                             id="newCategoryColor"
                                             defaultValue="#059669"
-                                            className="h-8 w-10 border rounded cursor-pointer"
+                                            className="h-8 w-16 border rounded cursor-pointer"
+                                            aria-label="Wybierz kolor kategorii"
                                         />
                                         <Button
                                             type="button"

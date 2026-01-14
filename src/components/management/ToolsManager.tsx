@@ -518,9 +518,18 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                                     <span className={tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) ? "text-orange-600 font-bold bg-orange-100 px-1 rounded flex items-center gap-0.5" : ""}>
                                                         {tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) && <AlertTriangle className="h-3 w-3" />}
                                                         {tool.serialNumber}
-                                                        {tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) && <span className="text-[10px]">(DUPLIKAT)</span>}
+                                                        {tool.brand}{tool.model ? ` ${tool.model}` : ""}
                                                     </span>
-                                                </span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                {tool.serialNumber || '-'}
+                                                {tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) && (
+                                                    <Badge variant="destructive" className="text-[10px] h-5 px-1.5">
+                                                        DUPLIKAT
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </TableCell>
                                         <TableCell>{getStatusBadge(tool.status)}</TableCell>
@@ -569,19 +578,19 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                                 }}>
                                                     Historia
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => tool.id && handleOpenProtocolDialog(tool)}>
+                                                <Button variant="ghost" size="icon" onClick={() => tool.id && handleOpenProtocolDialog(tool)} aria-label="Dodaj protokół">
                                                     <FileText className="h-4 w-4 text-blue-600" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleOpenQr(tool)} title="Kod QR">
+                                                <Button variant="ghost" size="icon" onClick={() => handleOpenQr(tool)} title="Kod QR" aria-label="Pokaż kod QR">
                                                     <QrCode className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setScanHistoryTool(tool)} title="Historia skanów">
+                                                <Button variant="ghost" size="icon" onClick={() => setScanHistoryTool(tool)} title="Historia skanów" aria-label="Pokaż historię skanów">
                                                     <MapPin className="h-4 w-4 text-emerald-600" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(tool)}>
+                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(tool)} aria-label="Edytuj narzędzie">
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => tool.id && confirmDelete(tool.id)}>
+                                                <Button variant="ghost" size="icon" onClick={() => tool.id && confirmDelete(tool.id)} aria-label="Usuń narzędzie">
                                                     <Trash2 className="h-4 w-4 text-red-500" />
                                                 </Button>
                                             </div>
