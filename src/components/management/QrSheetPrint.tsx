@@ -105,7 +105,7 @@ export function QrSheetPrint({ tools, onClose }: QrSheetPrintProps) {
                 }}
             >
                 {tools.map((tool) => {
-                    const toolUrl = `${origin}/tools/${tool.id || 0}`;
+                    const toolUrl = `${origin}/tools/${tool.id}`;
                     const initials = getInitials(tool.assignedEmployees);
                     const toolNumber = String(tool.id || 0).padStart(4, '0');
                     const label = `ERIZED/${initials} ${toolNumber}`;

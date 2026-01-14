@@ -199,7 +199,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
         if (printProtocols) {
             filteredTools.forEach(tool => {
                 const protocols = (tool as any).protocols || [];
-                const toolUrl = `${origin}/tools/${tool.id || 0}`;
+                const toolUrl = `${origin}/tools/${tool.id}`;
                 const initials = getInitials(tool.assignedEmployees);
                 const toolNumber = String(tool.id || 0).padStart(4, '0');
 

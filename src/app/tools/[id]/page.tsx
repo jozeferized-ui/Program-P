@@ -114,7 +114,7 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Numer Seryjny</p>
-                                    <p className="font-bold text-slate-800 truncate">{tool.serialNumber}</p>
+                                    <p className="font-bold text-black truncate">{tool.serialNumber}</p>
                                 </div>
                             </div>
 
@@ -125,7 +125,7 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Osoba Odpowiedzialna</p>
-                                        <p className="font-bold text-slate-800 truncate">
+                                        <p className="font-bold text-black truncate">
                                             {tool.assignedEmployees.map((e: any) => `${e.firstName} ${e.lastName}`).join(', ')}
                                         </p>
                                     </div>
@@ -159,7 +159,7 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">Nr Protokołu</p>
-                                        <p className="font-bold text-slate-800 truncate">{tool.protocolNumber}</p>
+                                        <p className="font-bold text-black truncate">{tool.protocolNumber}</p>
                                     </div>
                                 </div>
                             )}
