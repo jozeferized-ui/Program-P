@@ -700,6 +700,7 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                 open={isBulkPrintOpen}
                 onOpenChange={setIsBulkPrintOpen}
                 selectedTools={tools.filter(t => t.id && selectedToolIds.has(t.id))}
+                allTools={tools}
             />
 
         </div>

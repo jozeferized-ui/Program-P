@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Tool, Employee } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,13 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Printer, User, QrCode, Tag, FileText } from 'lucide-react';
-import { QRCodeCanvas } from 'qrcode.react';
-import { InspectionSticker } from './InspectionSticker';
+import QRCode from 'qrcode';
 
 interface BulkPrintDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     selectedTools: Tool[];
+    allTools?: Tool[];
     allEmployees?: Employee[];
 }
 
@@ -25,8 +25,8 @@ function getInitials(employees: Array<{ firstName: string; lastName: string }> |
     return ((emp.firstName?.[0] || '') + (emp.lastName?.[0] || '')).toUpperCase() || '--';
 }
 
-export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployees = [] }: BulkPrintDialogProps) {
-    const [employeeFilter, setEmployeeFilter] = useState<string>('all');
+export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = [], allEmployees = [] }: BulkPrintDialogProps) {
+    const [employeeFilter, setEmployeeFilter] = useState<string>('selected');
     const [showQr, setShowQr] = useState(true);
     const [showSticker, setShowSticker] = useState(true);
     const [showInfo, setShowInfo] = useState(true);
@@ -34,10 +34,10 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
 
-    // Get unique employees from selected tools
+    // Get unique employees from ALL tools
     const toolEmployees = useMemo(() => {
         const empMap = new Map<number, Employee>();
-        selectedTools.forEach(tool => {
+        allTools.forEach(tool => {
             (tool.assignedEmployees || []).forEach((emp: any) => {
                 if (emp.id && !empMap.has(emp.id)) {
                     empMap.set(emp.id, emp);
@@ -45,20 +45,42 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
             });
         });
         return Array.from(empMap.values());
-    }, [selectedTools]);
+    }, [allTools]);
 
-    // Filter tools by selected employee
+    // Filter tools based on selection mode
     const filteredTools = useMemo(() => {
-        if (employeeFilter === 'all') return selectedTools;
+        if (employeeFilter === 'selected') {
+            return selectedTools; // Only manually selected tools
+        }
+        // Filter all tools by employee
         const empId = parseInt(employeeFilter);
-        return selectedTools.filter(tool =>
+        return allTools.filter(tool =>
             (tool.assignedEmployees || []).some((e: any) => e.id === empId)
         );
-    }, [selectedTools, employeeFilter]);
+    }, [selectedTools, allTools, employeeFilter]);
 
-    const handlePrint = () => {
+
+    const handlePrint = async () => {
         const printWindow = window.open('', '_blank', 'width=800,height=600');
         if (!printWindow) return;
+
+        // Pre-generate QR codes as data URLs
+        const qrDataUrls = new Map<number, string>();
+        for (const tool of filteredTools) {
+            if (showQr && tool.id) {
+                try {
+                    const url = `${origin}/tools/${tool.id}`;
+                    const dataUrl = await QRCode.toDataURL(url, {
+                        width: 100,
+                        margin: 1,
+                        errorCorrectionLevel: 'H'
+                    });
+                    qrDataUrls.set(tool.id, dataUrl);
+                } catch (e) {
+                    console.error('QR generation error:', e);
+                }
+            }
+        }
 
         let cardsHtml = '';
 
@@ -67,10 +89,9 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
             filteredTools.forEach(tool => {
                 const lastInsp = tool.lastInspectionDate ? new Date(tool.lastInspectionDate) : null;
                 const expiry = tool.inspectionExpiryDate ? new Date(tool.inspectionExpiryDate) : null;
-                const toolUrl = `${origin}/tools/${tool.id || 0}`;
                 const initials = getInitials(tool.assignedEmployees);
                 const toolNumber = String(tool.id || 0).padStart(4, '0');
-                const brandLabel = `ERIZED/${initials} ${toolNumber}`;
+                const qrDataUrl = qrDataUrls.get(tool.id!) || '';
 
                 // Format dates
                 const lastInspStr = lastInsp ? lastInsp.toLocaleDateString('pl-PL') : '-';
@@ -93,9 +114,16 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                         ` : ''}
                         
                         <div style="display: flex; gap: 16px; align-items: center; justify-content: center;">
-                            ${showQr ? `
+                            ${showQr && qrDataUrl ? `
                                 <div style="text-align: center; position: relative;">
-                                    <div id="qr-tool-${tool.id}" style="width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;"></div>
+                                    <div style="position: relative; width: 100px; height: 100px;">
+                                        <img src="${qrDataUrl}" width="100" height="100" style="display: block;"/>
+                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2px 6px; border: 1px solid #1a1a2e; font-size: 7px; text-align: center; line-height: 1.3;">
+                                            <div style="font-weight: bold;">ERIZED</div>
+                                            <div>/${initials}</div>
+                                            <div style="font-weight: bold; font-size: 9px;">${toolNumber}</div>
+                                        </div>
+                                    </div>
                                 </div>
                             ` : ''}
 
@@ -293,7 +321,14 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                             </table>
                             <!-- Small QR at bottom -->
                             <div style="margin-top: 15px; text-align: right;">
-                                <div id="qr-protocol-${tool.id}-${protocol.id}" style="display: inline-block;"></div>
+                                <div style="display: inline-block; position: relative;">
+                                    <img src="${qrDataUrls.get(tool.id!) || ''}" width="60" height="60" style="display: block;"/>
+                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 1px 4px; border: 1px solid #1a1a2e; font-size: 5px; text-align: center; line-height: 1.2;">
+                                        <div style="font-weight: bold;">ERIZED</div>
+                                        <div>/${initials}</div>
+                                        <div style="font-weight: bold; font-size: 6px;">${toolNumber}</div>
+                                    </div>
+                                </div>
                                 <p style="font-size: 8px; margin: 4px 0 0 0;">ERIZED/${initials} ${toolNumber}</p>
                             </div>
                         </div>
@@ -302,41 +337,10 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
             });
         }
 
-        // Collect all QR data
-        const qrItems: Array<{ id: string, url: string, label: string }> = [];
-
-        if (showQr) {
-            filteredTools.forEach(tool => {
-                const initials = getInitials(tool.assignedEmployees);
-                const toolNumber = String(tool.id || 0).padStart(4, '0');
-                qrItems.push({
-                    id: `qr-tool-${tool.id}`,
-                    url: `${origin}/tools/${tool.id}`,
-                    label: `ERIZED/${initials} ${toolNumber}`
-                });
-            });
-        }
-
-        if (printProtocols) {
-            filteredTools.forEach(tool => {
-                const protocols = (tool as any).protocols || [];
-                const initials = getInitials(tool.assignedEmployees);
-                const toolNumber = String(tool.id || 0).padStart(4, '0');
-                protocols.forEach((protocol: any) => {
-                    qrItems.push({
-                        id: `qr-protocol-${tool.id}-${protocol.id}`,
-                        url: `${origin}/tools/${tool.id}`,
-                        label: `ERIZED/${initials} ${toolNumber}`
-                    });
-                });
-            });
-        }
-
         printWindow.document.write(`
             <html>
                 <head>
                     <title>Druk narzędzi</title>
-                    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>
                     <style>
                         @page { margin: 10mm; }
                         body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
@@ -348,66 +352,15 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                     ${protocolsHtml}
                 </body>
                 <script>
-                    window.onload = async () => {
-                        const qrItems = ${JSON.stringify(qrItems)};
-                        
-                        for (const item of qrItems) {
-                            const el = document.getElementById(item.id);
-                            if (!el) continue;
-                            
-                            try {
-                                // Create canvas for QR
-                                const canvas = document.createElement('canvas');
-                                canvas.width = 100;
-                                canvas.height = 100;
-                                
-                                // Generate QR code
-                                await QRCode.toCanvas(canvas, item.url, { 
-                                    width: 100, 
-                                    margin: 1,
-                                    errorCorrectionLevel: 'H'
-                                });
-                                
-                                // Add ERIZED overlay
-                                const ctx = canvas.getContext('2d');
-                                const cx = canvas.width / 2;
-                                const cy = canvas.height / 2;
-                                
-                                // White background for text
-                                ctx.fillStyle = 'white';
-                                ctx.fillRect(cx - 24, cy - 14, 48, 28);
-                                ctx.strokeStyle = '#1a1a2e';
-                                ctx.lineWidth = 1.5;
-                                ctx.strokeRect(cx - 24, cy - 14, 48, 28);
-                                
-                                // ERIZED text
-                                ctx.fillStyle = '#1a1a2e';
-                                ctx.font = 'bold 8px Arial';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-                                ctx.fillText('ERIZED', cx, cy - 6);
-                                
-                                // Initials and number
-                                const parts = item.label.split('/')[1]?.split(' ') || ['', ''];
-                                ctx.font = '7px Arial';
-                                ctx.fillText('/' + (parts[0] || ''), cx, cy + 2);
-                                ctx.font = 'bold 10px Arial';
-                                ctx.fillText(parts[1] || '', cx, cy + 11);
-                                
-                                el.appendChild(canvas);
-                            } catch (err) {
-                                console.error('QR error for', item.id, err);
-                                el.innerHTML = '<div style="width:100px;height:100px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;">QR Error</div>';
-                            }
-                        }
-                        
-                        setTimeout(() => { window.print(); window.close(); }, 1000);
+                    window.onload = () => {
+                        setTimeout(() => { window.print(); window.close(); }, 500);
                     };
                 <\/script>
             </html>
         `);
         printWindow.document.close();
     };
+
 
 
 
@@ -437,9 +390,9 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                                 <SelectValue placeholder="Wybierz pracownika" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="all">Wszyscy ({selectedTools.length} narzędzi)</SelectItem>
+                                <SelectItem value="selected">Zaznaczone ({selectedTools.length} narzędzi)</SelectItem>
                                 {toolEmployees.map(emp => {
-                                    const count = selectedTools.filter(t =>
+                                    const count = allTools.filter(t =>
                                         (t.assignedEmployees || []).some((e: any) => e.id === emp.id)
                                     ).length;
                                     return (
@@ -449,6 +402,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                                     );
                                 })}
                             </SelectContent>
+
                         </Select>
                     </div>
 
