@@ -1,11 +1,11 @@
 'use client';
 
-import { QRCodeSVG } from 'qrcode.react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tool } from '@/types';
 import { Download, Printer, QrCode } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 
 interface ToolQrDialogProps {
     open: boolean;
@@ -13,38 +13,109 @@ interface ToolQrDialogProps {
     tool: Tool | null;
 }
 
+// Generate initials from assigned employees
+function getInitials(assignedEmployees: Array<{ firstName: string; lastName: string }> | undefined): string {
+    if (!assignedEmployees || assignedEmployees.length === 0) return '--';
+
+    const emp = assignedEmployees[0];
+    const firstInitial = emp.firstName?.[0] || '';
+    const lastInitial = emp.lastName?.[0] || '';
+
+    if (firstInitial && lastInitial) {
+        return (firstInitial + lastInitial).toUpperCase();
+    }
+    return '--';
+}
+
+// Format tool ID as 4-digit number
+function formatToolNumber(id: number | undefined): string {
+    return (id || 0).toString().padStart(4, '0');
+}
+
 export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [canvasDataUrl, setCanvasDataUrl] = useState<string>('');
+
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const toolUrl = tool ? `${origin}/tools/${tool.id || 0}` : '';
+
+    const initials = tool ? getInitials(tool.assignedEmployees) : '--';
+    const toolNumber = tool ? formatToolNumber(tool.id) : '0000';
+    const brandLabel = `ERIZED/${initials} ${toolNumber}`;
+
+    useEffect(() => {
+        if (!open || !tool || !canvasRef.current) return;
+
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        const size = 280;
+        canvas.width = size;
+        canvas.height = size;
+
+        // Generate QR code with high error correction
+        QRCode.toCanvas(canvas, toolUrl, {
+            width: size,
+            margin: 2,
+            errorCorrectionLevel: 'H', // High - allows 30% damage
+            color: {
+                dark: '#000000',
+                light: '#ffffff',
+            },
+        }, (error) => {
+            if (error) {
+                console.error('QR generation error:', error);
+                return;
+            }
+
+            // Draw ERIZED branding overlay in the center
+            const labelWidth = 100;
+            const labelHeight = 50;
+            const x = (size - labelWidth) / 2;
+            const y = (size - labelHeight) / 2;
+
+            // White background with slight padding
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x - 4, y - 4, labelWidth + 8, labelHeight + 8);
+
+            // Border
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x - 2, y - 2, labelWidth + 4, labelHeight + 4);
+
+            // ERIZED text
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 14px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('ERIZED', size / 2, y + 12);
+
+            // /Initials text
+            ctx.font = 'bold 12px Arial, sans-serif';
+            ctx.fillText(`/${initials}`, size / 2, y + 28);
+
+            // Number
+            ctx.font = 'bold 16px Arial, sans-serif';
+            ctx.fillText(toolNumber, size / 2, y + 44);
+
+            // Save as data URL for download/print
+            setCanvasDataUrl(canvas.toDataURL('image/png'));
+        });
+    }, [open, tool, toolUrl, initials, toolNumber]);
+
     if (!tool) return null;
 
-    const qrRef = useRef<HTMLDivElement>(null);
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const toolUrl = `${origin}/tools/${tool.id}`;
-
     const handleDownload = () => {
-        const svg = qrRef.current?.querySelector('svg');
-        if (!svg) return;
-
-        const svgData = new XMLSerializer().serializeToString(svg);
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        const img = new Image();
-        img.onload = () => {
-            canvas.width = img.width;
-            canvas.height = img.height;
-            ctx?.drawImage(img, 0, 0);
-            const pngFile = canvas.toDataURL('image/png');
-            const downloadLink = document.createElement('a');
-            downloadLink.download = `QR_${tool.name}_${tool.serialNumber}.png`;
-            downloadLink.href = pngFile;
-            downloadLink.click();
-        };
-        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+        if (!canvasDataUrl) return;
+        const downloadLink = document.createElement('a');
+        downloadLink.download = `QR_ERIZED_${initials}_${toolNumber}.png`;
+        downloadLink.href = canvasDataUrl;
+        downloadLink.click();
     };
 
     const handlePrint = () => {
-        const svg = qrRef.current?.querySelector('svg');
-        if (!svg) return;
-        const svgHtml = svg.outerHTML;
+        if (!canvasDataUrl) return;
 
         const printWindow = window.open('', '_blank', 'width=600,height=600');
 
@@ -52,7 +123,7 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
             printWindow.document.write(`
                 <html>
                     <head>
-                        <title>Drukuj QR - ${tool.name}</title>
+                        <title>Drukuj QR - ${brandLabel}</title>
                         <style>
                             @page { size: auto; margin: 0mm; }
                             body { 
@@ -65,21 +136,23 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                                 margin: 0;
                             }
                             .card {
-                                border: 2px solid #000;
+                                border: 3px solid #000;
                                 padding: 20px;
                                 text-align: center;
-                                border-radius: 10px;
+                                border-radius: 12px;
                             }
-                            .qr { margin-bottom: 20px; }
-                            .name { font-weight: 900; font-size: 24px; text-transform: uppercase; margin-bottom: 4px; }
+                            .qr { margin-bottom: 16px; }
+                            .qr img { width: 200px; height: 200px; }
+                            .name { font-weight: 900; font-size: 18px; text-transform: uppercase; margin-bottom: 4px; }
                             .brand { font-weight: 700; font-size: 14px; color: #333; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
-                            .sn { font-size: 12px; font-weight: bold; color: #666; }
-                            svg { width: 250px; height: 250px; }
+                            .sn { font-size: 11px; font-weight: bold; color: #666; }
+                            .erized { font-size: 20px; font-weight: 900; letter-spacing: 2px; margin-top: 8px; }
                         </style>
                     </head>
                     <body>
                         <div class="card">
-                            <div class="qr">${svgHtml}</div>
+                            <div class="qr"><img src="${canvasDataUrl}" alt="QR Code" /></div>
+                            <div class="erized">${brandLabel}</div>
                             <div class="name">${tool.name}</div>
                             <div class="brand">${tool.brand}${tool.model ? ` ${tool.model}` : ""}</div>
                             <div class="sn">S/N: ${tool.serialNumber}</div>
@@ -110,25 +183,25 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                         <DialogTitle className="text-xl font-bold">Kod QR Narzędzia</DialogTitle>
                     </div>
                     <DialogDescription className="font-medium text-slate-500">
-                        Zeskanuj ten kod, aby błyskawicznie sprawdzić status i historię narzędzia na budowie.
+                        Zeskanuj ten kod, aby sprawdzić status i historię narzędzia.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 gap-6 my-4 shadow-inner">
-                    <div ref={qrRef} className="bg-white p-6 rounded-3xl shadow-2xl border-4 border-white ring-1 ring-slate-200">
-                        <QRCodeSVG value={toolUrl} size={180} level="H" includeMargin />
+                <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 gap-4 my-4">
+                    <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-100">
+                        <canvas ref={canvasRef} className="w-[200px] h-[200px]" />
                     </div>
                     <div className="text-center">
-                        <p className="font-black text-xl uppercase tracking-tight text-slate-900 leading-tight">{tool.name}</p>
-                        <p className="text-[10px] text-primary font-black uppercase tracking-[0.2em] mb-2">{tool.brand}{tool.model ? ` | ${tool.model}` : ""} | {tool.serialNumber}</p>
-                        <code className="text-[10px] bg-slate-200 px-2 py-1 rounded-md text-slate-600 break-all">{toolUrl}</code>
+                        <p className="font-black text-2xl tracking-wider text-slate-900">{brandLabel}</p>
+                        <p className="font-bold text-lg uppercase text-slate-700 mt-1">{tool.name}</p>
+                        <p className="text-xs text-slate-500 mt-1">{tool.brand}{tool.model ? ` | ${tool.model}` : ""} | S/N: {tool.serialNumber}</p>
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <Button onClick={handleDownload} variant="outline" className="flex-1 py-6 gap-2 rounded-xl font-bold hover:bg-slate-50">
-                        <Download className="w-4 h-4" /> Pobierz Obraz
+                    <Button onClick={handleDownload} variant="outline" className="flex-1 py-6 gap-2 rounded-xl font-bold">
+                        <Download className="w-4 h-4" /> Pobierz
                     </Button>
                     <Button onClick={handlePrint} className="flex-1 py-6 gap-2 rounded-xl font-bold shadow-lg shadow-primary/20">
-                        <Printer className="w-4 h-4" /> Drukuj Etykietę
+                        <Printer className="w-4 h-4" /> Drukuj
                     </Button>
                 </div>
             </DialogContent>
