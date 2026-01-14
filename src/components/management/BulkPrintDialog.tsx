@@ -464,10 +464,16 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                             <FileText className="w-4 h-4 text-blue-600" />
                             <div>
                                 <span className="font-medium">Protokoły przeglądów</span>
-                                <span className="text-sm text-muted-foreground block">Osobne strony z małym QR</span>
+                                <span className="text-sm text-muted-foreground block">
+                                    Dostępne: {filteredTools.reduce((sum, t) => sum + ((t as any).protocols?.length || 0), 0)} protokołów
+                                    {filteredTools.filter(t => !((t as any).protocols?.length)).length > 0 &&
+                                        ` (${filteredTools.filter(t => !((t as any).protocols?.length)).length} narzędzi bez protokołu)`
+                                    }
+                                </span>
                             </div>
                         </Label>
                     </div>
+
 
                     {/* Summary */}
                     <div className="text-sm text-muted-foreground p-3 bg-slate-100 rounded-lg">
