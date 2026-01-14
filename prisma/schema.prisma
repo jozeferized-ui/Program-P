@@ -379,3 +379,13 @@ model Attachment {
   uploadedBy String?
   createdAt  DateTime @default(now())
 }
+
+// Push Notification Subscriptions
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  p256dh    String   // Public key
+  auth      String   // Auth secret
+  userId    Int?
+  createdAt DateTime @default(now())
+}

@@ -1,10 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { jwtVerify } from 'jose';
+import { prisma } from '@/lib/prisma';
 
-// Push notification API
-// For production: npm install web-push, configure VAPID keys
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET);
 
-// In-memory storage (use database in production)
-const subscriptions: any[] = [];
+// Helper to verify auth token and get user ID
+async function verifyAuth(request: NextRequest): Promise<number | null> {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) return null;
+
+    try {
+        const { payload } = await jwtVerify(token, JWT_SECRET);
+        return payload.userId as number;
+    } catch {
+        return null;
+    }
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,30 +23,63 @@ export async function POST(request: NextRequest) {
         const { action, subscription, notification } = body;
 
         if (action === 'subscribe') {
-            subscriptions.push(subscription);
-            console.log('Push subscription added:', subscription.endpoint?.slice(0, 50));
+            // Verify auth for subscribing
+            const userId = await verifyAuth(request);
+            if (!userId) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+
+            // Extract keys from subscription
+            const { endpoint, keys } = subscription;
+
+            // Upsert subscription (update if exists, create if not)
+            await prisma.pushSubscription.upsert({
+                where: { endpoint },
+                update: {
+                    p256dh: keys?.p256dh || '',
+                    auth: keys?.auth || '',
+                    userId,
+                },
+                create: {
+                    endpoint,
+                    p256dh: keys?.p256dh || '',
+                    auth: keys?.auth || '',
+                    userId,
+                },
+            });
+
+            console.log('Push subscription saved to database');
             return NextResponse.json({ success: true });
         }
 
         if (action === 'unsubscribe') {
-            const index = subscriptions.findIndex(
-                (s: any) => s.endpoint === subscription.endpoint
-            );
-            if (index > -1) {
-                subscriptions.splice(index, 1);
-            }
+            const { endpoint } = subscription;
+
+            // Delete subscription from database
+            await prisma.pushSubscription.deleteMany({
+                where: { endpoint },
+            });
+
+            console.log('Push subscription removed from database');
             return NextResponse.json({ success: true });
         }
 
         if (action === 'send') {
-            // Log notification (production would use web-push)
+            // Verify auth for sending
+            const userId = await verifyAuth(request);
+            if (!userId) {
+                return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+            }
+
+            // Get all subscriptions from database
+            const subscriptions = await prisma.pushSubscription.findMany();
+
             console.log('Push notification:', notification);
             console.log('Would send to', subscriptions.length, 'subscribers');
 
-            // TODO: For production, install web-push:
+            // TODO: For production, install web-push and send actual notifications
             // npm install web-push
             // Generate VAPID: npx web-push generate-vapid-keys
-            // Add to .env: NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY
 
             return NextResponse.json({
                 success: true,
@@ -51,9 +95,17 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+    // Verify auth
+    const userId = await verifyAuth(request);
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const subscriptions = await prisma.pushSubscription.count();
+
     return NextResponse.json({
-        subscriptionCount: subscriptions.length,
+        subscriptionCount: subscriptions,
         message: 'Configure VAPID keys for production push notifications',
     });
 }
