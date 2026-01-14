@@ -37,13 +37,13 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
     const [rendered, setRendered] = useState(false);
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const toolUrl = tool ? `${origin}/tools/${tool.id || 0}` : '';
+    const toolUrl = tool ? `${origin}/tools/${tool.id}` : '';
 
     const initials = tool ? getInitials(tool.assignedEmployees) : '--';
     const toolNumber = tool ? formatToolNumber(tool.id) : '0000';
     const brandLabel = `ERIZED/${initials} ${toolNumber}`;
 
-    // Draw overlay on QR code - MINIMAL overlay
+    // Draw overlay on QR code - MINIMAL overlay with initials
     const drawOverlay = useCallback(() => {
         const sourceCanvas = qrContainerRef.current?.querySelector('canvas');
         const outputCanvas = outputCanvasRef.current;
@@ -60,22 +60,26 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
         // Draw the QR code first
         ctx.drawImage(sourceCanvas, 0, 0, size, size);
 
-        // Minimal overlay - just tool number in small box
-        const labelWidth = size * 0.18;
-        const labelHeight = size * 0.10;
+        // Minimal overlay - initials and tool number
+        const labelWidth = size * 0.22;
+        const labelHeight = size * 0.12;
         const x = (size - labelWidth) / 2;
         const y = (size - labelHeight) / 2;
 
         // White background for label
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x - 2, y - 2, labelWidth + 4, labelHeight + 4);
+        ctx.fillRect(x - 3, y - 3, labelWidth + 6, labelHeight + 6);
 
-        // Tool number only
+        // Initials (smaller, above)
         ctx.fillStyle = '#1a1a2e';
-        ctx.font = 'bold 14px Arial, sans-serif';
+        ctx.font = 'bold 12px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(toolNumber, size / 2, size / 2);
+        ctx.fillText(initials, size / 2, y + labelHeight * 0.35);
+
+        // Tool number (larger, below)
+        ctx.font = 'bold 16px Arial, sans-serif';
+        ctx.fillText(toolNumber, size / 2, y + labelHeight * 0.75);
 
         // Save as data URL
 
