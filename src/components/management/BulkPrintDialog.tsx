@@ -116,13 +116,11 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                     cardsHtml += `
                         <div style="display: flex; gap: 2px; page-break-inside: avoid;">
                             ${showQr && qrDataUrl ? `
-                                <div style="position: relative; width: 55px; height: 55px;">
+                                <div style="text-align: center;">
                                     <img src="${qrDataUrl}" width="55" height="55" style="display: block;"/>
-                                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0px 1px; font-size: 3px; text-align: center; line-height: 1;">
-                                        <div style="font-weight: bold; font-size: 4px;">${toolNumber}</div>
-                                    </div>
+                                    <div style="font-size: 4px; font-weight: bold; margin-top: 1px;">${toolNumber}</div>
                                 </div>
-                            ` : ''}
+                            ` : ''}}
                             
                             ${showSticker ? `
                                 <svg width="55" height="55" viewBox="0 0 100 100">
@@ -160,13 +158,11 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                             
                             <div style="display: flex; gap: 8px; align-items: center; flex-shrink: 0;">
                                 ${showQr && qrDataUrl ? `
-                                    <div style="position: relative; width: 70px; height: 70px;">
+                                    <div style="text-align: center;">
                                         <img src="${qrDataUrl}" width="70" height="70" style="display: block;"/>
-                                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0 2px; font-size: 5px; text-align: center; line-height: 1;">
-                                            <div style="font-weight: bold; font-size: 6px;">${toolNumber}</div>
-                                        </div>
+                                        <div style="font-size: 6px; font-weight: bold; margin-top: 2px;">${toolNumber}</div>
                                     </div>
-                                ` : ''}}
+                                ` : ''}
                                 
                                 ${showSticker ? `
                                     <svg width="70" height="70" viewBox="0 0 100 100">

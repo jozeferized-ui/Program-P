@@ -199,37 +199,72 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
                             )}
                         />
 
-                        {/* Category dropdown */}
+                        {/* Category dropdown with inline creation */}
                         <FormField
                             control={form.control}
                             name="categoryId"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Kategoria</FormLabel>
-                                    <Select
-                                        value={field.value?.toString() || "none"}
-                                        onValueChange={(val) => field.onChange(val === "none" ? undefined : parseInt(val))}
-                                    >
-                                        <FormControl>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Wybierz kategorię" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="none">Brak kategorii</SelectItem>
-                                            {categories.map(cat => (
-                                                <SelectItem key={cat.id} value={cat.id!.toString()}>
-                                                    <div className="flex items-center gap-2">
-                                                        <div
-                                                            className="w-3 h-3 rounded-full"
-                                                            style={{ backgroundColor: cat.color }}
-                                                        />
-                                                        {cat.name}
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <div className="flex gap-2">
+                                        <Select
+                                            value={field.value?.toString() || "none"}
+                                            onValueChange={(val) => field.onChange(val === "none" ? undefined : parseInt(val))}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="flex-1">
+                                                    <SelectValue placeholder="Wybierz kategorię" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="none">Brak kategorii</SelectItem>
+                                                {categories.map(cat => (
+                                                    <SelectItem key={cat.id} value={cat.id!.toString()}>
+                                                        <div className="flex items-center gap-2">
+                                                            <div
+                                                                className="w-3 h-3 rounded-full"
+                                                                style={{ backgroundColor: cat.color }}
+                                                            />
+                                                            {cat.name}
+                                                        </div>
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex gap-2 mt-2">
+                                        <Input
+                                            placeholder="Nowa kategoria..."
+                                            id="newCategoryName"
+                                            className="flex-1 h-8 text-sm"
+                                        />
+                                        <input
+                                            type="color"
+                                            id="newCategoryColor"
+                                            defaultValue="#059669"
+                                            className="h-8 w-10 border rounded cursor-pointer"
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={async () => {
+                                                const nameInput = document.getElementById('newCategoryName') as HTMLInputElement;
+                                                const colorInput = document.getElementById('newCategoryColor') as HTMLInputElement;
+                                                if (nameInput?.value) {
+                                                    const { createToolCategory } = await import('@/actions/toolCategories');
+                                                    const result = await createToolCategory(nameInput.value, colorInput?.value || '#059669');
+                                                    if (result.success && result.data) {
+                                                        setCategories(prev => [...prev, result.data as ToolCategory]);
+                                                        field.onChange(result.data.id);
+                                                        nameInput.value = '';
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            Dodaj
+                                        </Button>
+                                    </div>
                                     <FormMessage />
                                 </FormItem>
                             )}
