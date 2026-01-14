@@ -94,35 +94,11 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                         
                         <div style="display: flex; gap: 16px; align-items: center; justify-content: center;">
                             ${showQr ? `
-                                <div style="text-align: center; position: relative; width: 100px; height: 100px;">
-                                    <!-- QR with ERIZED overlay -->
-                                    <svg width="100" height="100" viewBox="0 0 100 100" style="background: white; border: 1px solid #e0e0e0; border-radius: 8px;">
-                                        <!-- QR placeholder pattern -->
-                                        <rect x="5" y="5" width="90" height="90" fill="url(#qrPattern${tool.id})"/>
-                                        <defs>
-                                            <pattern id="qrPattern${tool.id}" patternUnits="userSpaceOnUse" width="8" height="8">
-                                                <rect width="4" height="4" fill="#1a1a2e"/>
-                                                <rect x="4" y="4" width="4" height="4" fill="#1a1a2e"/>
-                                            </pattern>
-                                        </defs>
-                                        <!-- Corner markers -->
-                                        <rect x="8" y="8" width="20" height="20" fill="#1a1a2e"/>
-                                        <rect x="11" y="11" width="14" height="14" fill="white"/>
-                                        <rect x="14" y="14" width="8" height="8" fill="#1a1a2e"/>
-                                        <rect x="72" y="8" width="20" height="20" fill="#1a1a2e"/>
-                                        <rect x="75" y="11" width="14" height="14" fill="white"/>
-                                        <rect x="78" y="14" width="8" height="8" fill="#1a1a2e"/>
-                                        <rect x="8" y="72" width="20" height="20" fill="#1a1a2e"/>
-                                        <rect x="11" y="75" width="14" height="14" fill="white"/>
-                                        <rect x="14" y="78" width="8" height="8" fill="#1a1a2e"/>
-                                        <!-- ERIZED overlay in center -->
-                                        <rect x="28" y="35" width="44" height="30" fill="white" stroke="#1a1a2e" stroke-width="2"/>
-                                        <text x="50" y="45" text-anchor="middle" fill="#1a1a2e" font-size="7" font-weight="bold">ERIZED</text>
-                                        <text x="50" y="53" text-anchor="middle" fill="#1a1a2e" font-size="6">/${initials}</text>
-                                        <text x="50" y="62" text-anchor="middle" fill="#1a1a2e" font-size="9" font-weight="bold">${toolNumber}</text>
-                                    </svg>
+                                <div style="text-align: center; position: relative;">
+                                    <div id="qr-tool-${tool.id}" style="width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;"></div>
                                 </div>
                             ` : ''}
+
                             
                             ${showSticker ? `
                                 <div style="text-align: center; width: 100px; height: 100px;">
@@ -165,67 +141,193 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
         }
 
 
-        // Protocols
+        // Protocols - matching ToolProtocolPdf format
         let protocolsHtml = '';
         if (printProtocols) {
             filteredTools.forEach(tool => {
                 const protocols = (tool as any).protocols || [];
                 const toolUrl = `${origin}/tools/${tool.id || 0}`;
+                const initials = getInitials(tool.assignedEmployees);
+                const toolNumber = String(tool.id || 0).padStart(4, '0');
 
                 protocols.forEach((protocol: any) => {
+                    // Parse protocol content if it's JSON
+                    let protocolData: any = {};
+                    try {
+                        if (protocol.content && protocol.content.startsWith('{')) {
+                            protocolData = JSON.parse(protocol.content);
+                        }
+                    } catch (e) {
+                        protocolData = {};
+                    }
+
+                    const formatDate = (d: any) => {
+                        if (!d) return '....................';
+                        return new Date(d).toLocaleDateString('pl-PL');
+                    };
+
+                    const general = protocolData.general || { a: '-', b: '-', c: '-', d: '-' };
+                    const disassembly = protocolData.disassembly || { a: '-', b: '-', c: '-', d: '-' };
+                    const protection = protocolData.protection || { a: '-', b: '-' };
+
                     protocolsHtml += `
-                        <div class="protocol-page" style="page-break-after: always; padding: 20px; font-family: Arial, sans-serif;">
-                            <h1 style="text-align: center; font-size: 18px; margin-bottom: 20px; border-bottom: 2px solid #059669; padding-bottom: 10px;">
-                                PROTOKÓŁ PRZEGLĄDU NARZĘDZIA
-                            </h1>
-                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                        <div class="protocol-page" style="page-break-after: always; font-family: Arial, sans-serif; font-size: 11px;">
+                            <table style="width: 100%; border-collapse: collapse; border: 2px solid black;">
+                                <!-- Header -->
                                 <tr>
-                                    <td style="border: 1px solid #000; padding: 8px; width: 30%; font-weight: bold; background: #f0f0f0;">Narzędzie:</td>
-                                    <td style="border: 1px solid #000; padding: 8px;">${tool.name}</td>
+                                    <td colspan="2" style="border: 1px solid black; padding: 8px; background: #e5e5e5; font-weight: bold;">
+                                        PROTOKÓŁ NR ${tool.protocolNumber || '...'} GOTOWY<br/>
+                                        NR DO NASTĘPNEGO PRZEGLĄDU
+                                    </td>
+                                    <td colspan="2" style="border: 1px solid black; padding: 8px; background: #e5e5e5;"></td>
                                 </tr>
+                                <!-- Title -->
                                 <tr>
-                                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold; background: #f0f0f0;">Marka / Model:</td>
-                                    <td style="border: 1px solid #000; padding: 8px;">${tool.brand || '-'} ${tool.model || ''}</td>
-                                </tr>
-                                <tr>
-                                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold; background: #f0f0f0;">Numer seryjny:</td>
-                                    <td style="border: 1px solid #000; padding: 8px;">${tool.serialNumber}</td>
-                                </tr>
-                                <tr>
-                                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold; background: #f0f0f0;">Data przeglądu:</td>
-                                    <td style="border: 1px solid #000; padding: 8px;">${new Date(protocol.date).toLocaleDateString('pl-PL')}</td>
-                                </tr>
-                                <tr>
-                                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold; background: #f0f0f0;">Inspektor:</td>
-                                    <td style="border: 1px solid #000; padding: 8px;">${protocol.inspectorName}</td>
-                                </tr>
-                                <tr>
-                                    <td style="border: 1px solid #000; padding: 8px; font-weight: bold; background: #f0f0f0;">Wynik:</td>
-                                    <td style="border: 1px solid #000; padding: 8px; ${protocol.result === 'POZYTYWNA' ? 'color: green;' : 'color: red;'} font-weight: bold;">
-                                        ${protocol.result}
+                                    <td colspan="4" style="border: 1px solid black; padding: 8px; background: #e5e5e5; text-align: center; font-weight: bold; font-size: 13px;">
+                                        BADANIE ELEKTRONARZĘDZI O NAPĘDZIE ELEKTRYCZNYM
                                     </td>
                                 </tr>
+                                <!-- Device info -->
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold; width: 150px;">RODZAJ POMIARÓW</td>
+                                    <td colspan="3" style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">OKRESOWY PRZEGLĄD</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold;">RODZAJ PRZYRZĄDU</td>
+                                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold; text-transform: uppercase;">${tool.name}</td>
+                                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">${tool.brand || ''} ${tool.model || ''}</td>
+                                    <td style="border: 1px solid black; padding: 6px; text-align: center; font-weight: bold;">NR ${tool.serialNumber}</td>
+                                </tr>
+                                <!-- Dates -->
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold;">DATA</td>
+                                    <td style="border: 1px solid black; padding: 4px;">
+                                        <div style="font-size: 9px; background: #f0f0f0; padding: 2px; font-weight: bold;">DATA BIEŻĄCYCH BADAŃ</div>
+                                        <div style="text-align: center; font-size: 16px; font-weight: bold; padding: 4px;">${formatDate(protocolData.date || protocol.date)}</div>
+                                    </td>
+                                    <td colspan="2" style="border: 1px solid black; padding: 4px;">
+                                        <div style="font-size: 9px; background: #f0f0f0; padding: 2px; font-weight: bold;">DATA NASTĘPNYCH BADAŃ</div>
+                                        <div style="text-align: center; font-size: 16px; padding: 4px;">${formatDate(protocolData.nextInspectionDate || tool.inspectionExpiryDate)}</div>
+                                    </td>
+                                </tr>
+                                <!-- Inspector -->
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold;">POMIAR WYKONAŁ</td>
+                                    <td colspan="3" style="border: 1px solid black; padding: 6px; font-weight: bold;">${protocolData.inspectorName || protocol.inspectorName || ''}</td>
+                                </tr>
+                                <!-- Conditions -->
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold;">WARUNKI Z POMIARÓW</td>
+                                    <td colspan="3" style="border: 1px solid black; padding: 6px;">${protocolData.comments || ''}</td>
+                                </tr>
+                                <!-- Section 1: Stan Ogólny -->
+                                <tr>
+                                    <td rowspan="4" style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold; text-align: center; vertical-align: middle;">SPRAWDZONO STAN OGÓLNY</td>
+                                    <td style="border: 1px solid black; padding: 4px; width: 30px;">a.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Czy obudowa, przewód przyłączeniowy, wtyczka są nieuszkodzone</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold; width: 100px;">${general.a}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 4px;">b.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Uchwyty, zaciski części roboczych są kompletne</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${general.b}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 4px;">c.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Kontrola wycieku smaru</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${general.c}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 4px;">d.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Sprawdzenie biegu jałowego</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${general.d}</td>
+                                </tr>
+                                <!-- Section 2: Demontaż -->
+                                <tr>
+                                    <td rowspan="4" style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold; text-align: center; vertical-align: middle; font-size: 9px;">PRZEPROWADZONO DEMONTAŻ I OGLĘDZINY</td>
+                                    <td style="border: 1px solid black; padding: 4px;">a.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Przewód przyłączeniowy jest dobrze przymocowany i podłączony</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${disassembly.a}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 4px;">b.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Połączenia wewnętrzne są nieuszkodzone</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${disassembly.b}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 4px;">c.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Komutator i szczotki nie są zużyte</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${disassembly.c}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 4px;">d.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Elementy mechaniczne są nasmarowane</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${disassembly.d}</td>
+                                </tr>
+                                <!-- Section 3: Obwód ochronny -->
+                                <tr>
+                                    <td rowspan="2" style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold; text-align: center; vertical-align: middle; font-size: 10px;">SPRAWDZENIE OBWODU OCHRONNEGO</td>
+                                    <td style="border: 1px solid black; padding: 4px;">a.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Przewód PE jest dobrze podpięty</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${protection.a}</td>
+                                </tr>
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 4px;">b.</td>
+                                    <td style="border: 1px solid black; padding: 4px;">Pomierzono spadek napięcia</td>
+                                    <td style="border: 1px solid black; padding: 4px; text-align: center; font-weight: bold;">${protection.b}</td>
+                                </tr>
+                                <!-- Final result -->
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold;">OCENA KOŃCOWA</td>
+                                    <td colspan="3" style="border: 1px solid black; padding: 8px; text-align: center; font-weight: bold; font-size: 16px; ${(protocolData.result || protocol.result) === 'POZYTYWNA' ? 'color: green;' : 'color: red;'}">
+                                        ${protocolData.result || protocol.result || '-'}
+                                    </td>
+                                </tr>
+                                <!-- Footer -->
+                                <tr>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold;">MIEJSCE I DATA</td>
+                                    <td style="border: 1px solid black; padding: 6px; font-weight: bold;">${protocolData.place || ''} ${formatDate(protocolData.date || protocol.date)}</td>
+                                    <td style="border: 1px solid black; padding: 6px; background: #f0f0f0; font-weight: bold;">PODPIS</td>
+                                    <td style="border: 1px solid black; padding: 6px;"></td>
+                                </tr>
                             </table>
-                            <div style="border: 1px solid #000; padding: 10px; min-height: 100px; margin-bottom: 30px;">
-                                <strong>Treść protokołu:</strong><br/>
-                                ${protocol.content || '-'}
-                            </div>
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 40px;">
-                                <div style="width: 45%; border-top: 1px solid #000; padding-top: 5px; text-align: center;">
-                                    Podpis inspektora
-                                </div>
-                                <div style="width: 45%; border-top: 1px solid #000; padding-top: 5px; text-align: center;">
-                                    Data
-                                </div>
-                            </div>
-                            <div style="text-align: right; margin-top: 20px;">
-                                <div id="protocol-qr-${tool.id}-${protocol.id}" style="display: inline-block; background: #f0f0f0; padding: 8px; border-radius: 8px;">
-                                    <svg width="60" height="60" style="background: white;"></svg>
-                                </div>
-                                <p style="font-size: 8px; margin: 4px 0 0 0;">Zeskanuj aby zobaczyć narzędzie</p>
+                            <!-- Small QR at bottom -->
+                            <div style="margin-top: 15px; text-align: right;">
+                                <div id="qr-protocol-${tool.id}-${protocol.id}" style="display: inline-block;"></div>
+                                <p style="font-size: 8px; margin: 4px 0 0 0;">ERIZED/${initials} ${toolNumber}</p>
                             </div>
                         </div>
                     `;
+                });
+            });
+        }
+
+        // Collect all QR data
+        const qrItems: Array<{ id: string, url: string, label: string }> = [];
+
+        if (showQr) {
+            filteredTools.forEach(tool => {
+                const initials = getInitials(tool.assignedEmployees);
+                const toolNumber = String(tool.id || 0).padStart(4, '0');
+                qrItems.push({
+                    id: `qr-tool-${tool.id}`,
+                    url: `${origin}/tools/${tool.id}`,
+                    label: `ERIZED/${initials} ${toolNumber}`
+                });
+            });
+        }
+
+        if (printProtocols) {
+            filteredTools.forEach(tool => {
+                const protocols = (tool as any).protocols || [];
+                const initials = getInitials(tool.assignedEmployees);
+                const toolNumber = String(tool.id || 0).padStart(4, '0');
+                protocols.forEach((protocol: any) => {
+                    qrItems.push({
+                        id: `qr-protocol-${tool.id}-${protocol.id}`,
+                        url: `${origin}/tools/${tool.id}`,
+                        label: `ERIZED/${initials} ${toolNumber}`
+                    });
                 });
             });
         }
@@ -234,9 +336,10 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
             <html>
                 <head>
                     <title>Druk narzędzi</title>
+                    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"><\/script>
                     <style>
-                        @page { margin: 15mm; }
-                        body { margin: 0; padding: 0; }
+                        @page { margin: 10mm; }
+                        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
                         .tool-card { page-break-inside: avoid; }
                     </style>
                 </head>
@@ -246,13 +349,52 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allEmployee
                 </body>
                 <script>
                     window.onload = () => {
-                        setTimeout(() => { window.print(); window.close(); }, 500);
+                        const qrItems = ${JSON.stringify(qrItems)};
+                        
+                        Promise.all(qrItems.map(item => {
+                            const el = document.getElementById(item.id);
+                            if (el && typeof QRCode !== 'undefined') {
+                                return QRCode.toCanvas(item.url, { width: 80, margin: 1 })
+                                    .then(canvas => {
+                                        // Add ERIZED overlay
+                                        const ctx = canvas.getContext('2d');
+                                        const cx = canvas.width / 2;
+                                        const cy = canvas.height / 2;
+                                        
+                                        // White background for text
+                                        ctx.fillStyle = 'white';
+                                        ctx.fillRect(cx - 22, cy - 12, 44, 24);
+                                        ctx.strokeStyle = '#1a1a2e';
+                                        ctx.lineWidth = 1;
+                                        ctx.strokeRect(cx - 22, cy - 12, 44, 24);
+                                        
+                                        // ERIZED text
+                                        ctx.fillStyle = '#1a1a2e';
+                                        ctx.font = 'bold 7px Arial';
+                                        ctx.textAlign = 'center';
+                                        ctx.fillText('ERIZED', cx, cy - 4);
+                                        
+                                        // Initials and number
+                                        const parts = item.label.split('/')[1]?.split(' ') || ['', ''];
+                                        ctx.font = '6px Arial';
+                                        ctx.fillText('/' + (parts[0] || ''), cx, cy + 3);
+                                        ctx.font = 'bold 9px Arial';
+                                        ctx.fillText(parts[1] || '', cx, cy + 11);
+                                        
+                                        el.appendChild(canvas);
+                                    });
+                            }
+                            return Promise.resolve();
+                        })).then(() => {
+                            setTimeout(() => { window.print(); window.close(); }, 800);
+                        });
                     };
-                </script>
+                <\/script>
             </html>
         `);
         printWindow.document.close();
     };
+
 
     const handleClose = () => {
         onOpenChange(false);
