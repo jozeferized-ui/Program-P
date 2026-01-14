@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Tool } from '@/types';
 import { Download, Printer, QrCode } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
-import QRCode from 'qrcode';
+import { QRCodeCanvas } from 'qrcode.react';
 
 interface ToolQrDialogProps {
     open: boolean;
@@ -16,11 +16,9 @@ interface ToolQrDialogProps {
 // Generate initials from assigned employees
 function getInitials(assignedEmployees: Array<{ firstName: string; lastName: string }> | undefined): string {
     if (!assignedEmployees || assignedEmployees.length === 0) return '--';
-
     const emp = assignedEmployees[0];
     const firstInitial = emp.firstName?.[0] || '';
     const lastInitial = emp.lastName?.[0] || '';
-
     if (firstInitial && lastInitial) {
         return (firstInitial + lastInitial).toUpperCase();
     }
@@ -33,8 +31,8 @@ function formatToolNumber(id: number | undefined): string {
 }
 
 export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [canvasDataUrl, setCanvasDataUrl] = useState<string>('');
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [imageUrl, setImageUrl] = useState<string>('');
 
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const toolUrl = tool ? `${origin}/tools/${tool.id || 0}` : '';
@@ -43,79 +41,65 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
     const toolNumber = tool ? formatToolNumber(tool.id) : '0000';
     const brandLabel = `ERIZED/${initials} ${toolNumber}`;
 
+    // Generate image URL after QR renders
     useEffect(() => {
-        if (!open || !tool || !canvasRef.current) return;
+        if (!open || !tool) return;
 
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
+        const timeout = setTimeout(() => {
+            const canvas = containerRef.current?.querySelector('canvas');
+            if (canvas) {
+                // Draw overlay on the QR code
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    const size = canvas.width;
+                    const labelWidth = size * 0.4;
+                    const labelHeight = size * 0.22;
+                    const x = (size - labelWidth) / 2;
+                    const y = (size - labelHeight) / 2;
 
-        const size = 280;
-        canvas.width = size;
-        canvas.height = size;
+                    // White background
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(x - 4, y - 4, labelWidth + 8, labelHeight + 8);
 
-        // Generate QR code with high error correction
-        QRCode.toCanvas(canvas, toolUrl, {
-            width: size,
-            margin: 2,
-            errorCorrectionLevel: 'H', // High - allows 30% damage
-            color: {
-                dark: '#000000',
-                light: '#ffffff',
-            },
-        }, (error) => {
-            if (error) {
-                console.error('QR generation error:', error);
-                return;
+                    // Border
+                    ctx.strokeStyle = '#1a1a2e';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(x - 2, y - 2, labelWidth + 4, labelHeight + 4);
+
+                    // ERIZED text
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.font = `bold ${size * 0.055}px Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('ERIZED', size / 2, y + labelHeight * 0.25);
+
+                    // /Initials text
+                    ctx.font = `bold ${size * 0.05}px Arial, sans-serif`;
+                    ctx.fillText(`/${initials}`, size / 2, y + labelHeight * 0.5);
+
+                    // Number
+                    ctx.font = `bold ${size * 0.07}px Arial, sans-serif`;
+                    ctx.fillText(toolNumber, size / 2, y + labelHeight * 0.8);
+                }
+                setImageUrl(canvas.toDataURL('image/png'));
             }
+        }, 100);
 
-            // Draw ERIZED branding overlay in the center
-            const labelWidth = 100;
-            const labelHeight = 50;
-            const x = (size - labelWidth) / 2;
-            const y = (size - labelHeight) / 2;
-
-            // White background with slight padding
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(x - 4, y - 4, labelWidth + 8, labelHeight + 8);
-
-            // Border
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x - 2, y - 2, labelWidth + 4, labelHeight + 4);
-
-            // ERIZED text
-            ctx.fillStyle = '#000000';
-            ctx.font = 'bold 14px Arial, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('ERIZED', size / 2, y + 12);
-
-            // /Initials text
-            ctx.font = 'bold 12px Arial, sans-serif';
-            ctx.fillText(`/${initials}`, size / 2, y + 28);
-
-            // Number
-            ctx.font = 'bold 16px Arial, sans-serif';
-            ctx.fillText(toolNumber, size / 2, y + 44);
-
-            // Save as data URL for download/print
-            setCanvasDataUrl(canvas.toDataURL('image/png'));
-        });
-    }, [open, tool, toolUrl, initials, toolNumber]);
+        return () => clearTimeout(timeout);
+    }, [open, tool, initials, toolNumber]);
 
     if (!tool) return null;
 
     const handleDownload = () => {
-        if (!canvasDataUrl) return;
+        if (!imageUrl) return;
         const downloadLink = document.createElement('a');
         downloadLink.download = `QR_ERIZED_${initials}_${toolNumber}.png`;
-        downloadLink.href = canvasDataUrl;
+        downloadLink.href = imageUrl;
         downloadLink.click();
     };
 
     const handlePrint = () => {
-        if (!canvasDataUrl) return;
+        if (!imageUrl) return;
 
         const printWindow = window.open('', '_blank', 'width=600,height=600');
 
@@ -125,7 +109,7 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                     <head>
                         <title>Drukuj QR - ${brandLabel}</title>
                         <style>
-                            @page { size: auto; margin: 0mm; }
+                            @page { size: auto; margin: 10mm; }
                             body { 
                                 display: flex; 
                                 flex-direction: column; 
@@ -136,26 +120,25 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                                 margin: 0;
                             }
                             .card {
-                                border: 3px solid #000;
-                                padding: 20px;
+                                border: 3px solid #1a1a2e;
+                                padding: 24px;
                                 text-align: center;
-                                border-radius: 12px;
+                                border-radius: 16px;
+                                background: #fff;
                             }
                             .qr { margin-bottom: 16px; }
-                            .qr img { width: 200px; height: 200px; }
-                            .name { font-weight: 900; font-size: 18px; text-transform: uppercase; margin-bottom: 4px; }
-                            .brand { font-weight: 700; font-size: 14px; color: #333; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 8px; }
-                            .sn { font-size: 11px; font-weight: bold; color: #666; }
-                            .erized { font-size: 20px; font-weight: 900; letter-spacing: 2px; margin-top: 8px; }
+                            .qr img { width: 220px; height: 220px; }
+                            .erized { font-size: 24px; font-weight: 900; letter-spacing: 3px; color: #1a1a2e; margin-bottom: 8px; }
+                            .name { font-weight: 800; font-size: 16px; text-transform: uppercase; color: #1a1a2e; margin-bottom: 4px; }
+                            .brand { font-weight: 600; font-size: 12px; color: #666; }
                         </style>
                     </head>
                     <body>
                         <div class="card">
-                            <div class="qr"><img src="${canvasDataUrl}" alt="QR Code" /></div>
+                            <div class="qr"><img src="${imageUrl}" alt="QR Code" /></div>
                             <div class="erized">${brandLabel}</div>
                             <div class="name">${tool.name}</div>
-                            <div class="brand">${tool.brand}${tool.model ? ` ${tool.model}` : ""}</div>
-                            <div class="sn">S/N: ${tool.serialNumber}</div>
+                            <div class="brand">${tool.brand}${tool.model ? ` | ${tool.model}` : ""} | S/N: ${tool.serialNumber}</div>
                         </div>
                         <script>
                             window.onload = () => {
@@ -187,8 +170,15 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                     </DialogDescription>
                 </DialogHeader>
                 <div className="flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 gap-4 my-4">
-                    <div className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-100">
-                        <canvas ref={canvasRef} className="w-[200px] h-[200px]" />
+                    <div ref={containerRef} className="bg-white p-4 rounded-2xl shadow-xl border-2 border-slate-100">
+                        <QRCodeCanvas
+                            value={toolUrl}
+                            size={220}
+                            level="H"
+                            includeMargin
+                            bgColor="#ffffff"
+                            fgColor="#1a1a2e"
+                        />
                     </div>
                     <div className="text-center">
                         <p className="font-black text-2xl tracking-wider text-slate-900">{brandLabel}</p>
