@@ -64,6 +64,10 @@ model Project {
   
   suppliers       Supplier[]
   employees       Employee[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([isDeleted])
 }
 
 model Task {
@@ -81,6 +85,10 @@ model Task {
   isDeleted   Int       @default(0)
   deletedAt   DateTime?
   orders      Order[]
+
+  @@index([projectId])
+  @@index([status])
+  @@index([isDeleted])
 }
 
 model Expense {
@@ -172,6 +180,11 @@ model Order {
   isDeleted   Int       @default(0)
   deletedAt   DateTime?
   expenses    Expense[]
+
+  @@index([projectId])
+  @@index([supplierId])
+  @@index([status])
+  @@index([isDeleted])
 }
 
 model CostEstimateItem {

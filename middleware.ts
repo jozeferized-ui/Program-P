@@ -3,8 +3,12 @@ import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
 const JWT_SECRET = new TextEncoder().encode(
-    process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
+    process.env.JWT_SECRET
 );
+
+if (!process.env.JWT_SECRET) {
+    console.error('WARNING: JWT_SECRET not configured!');
+}
 
 // Map routes to required permissions
 const ROUTE_PERMISSIONS: Record<string, string> = {
