@@ -111,10 +111,11 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
                 employeeIds: [],
                 lastInspectionDate: undefined,
                 protocolNumber: "",
+                categoryId: undefined,
             });
             setInspectionInterval("6");
         }
-    }, [initialData, form, open]);
+    }, [initialData, open]);
 
     const handleSubmit = (values: FormValues) => {
         const submissionData = {

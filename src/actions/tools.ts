@@ -159,7 +159,8 @@ export async function updateTool(id: number, data: Partial<Tool> & { employeeIds
             where: { id },
             data: updateData,
             include: {
-                assignedEmployees: true
+                assignedEmployees: true,
+                category: true
             }
         });
         revalidatePath('/management');
