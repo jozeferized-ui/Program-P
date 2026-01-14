@@ -107,7 +107,11 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                 const deviceName = (tool.name || '-').substring(0, 25);
                 const serialNum = (tool.serialNumber || '-').substring(0, 18);
 
+                // Sticker name priority: Model > Brand > Name
+                const stickerName = (tool.model || tool.brand || tool.name || '-');
+
                 if (gridMode) {
+
                     // Compact grid items - just QR and/or sticker side by side
                     cardsHtml += `
                         <div style="display: flex; gap: 2px; page-break-inside: avoid;">
@@ -128,7 +132,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                                     <circle cx="50" cy="50" r="40" fill="#e6f7f0" stroke="#064e3b" stroke-width="0.5"/>
                                     <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.15)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
                                     <text x="50" y="18" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
-                                    <text x="50" y="28" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${deviceName.substring(0, 14)}</text>
+                                    <text x="50" y="28" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${stickerName.substring(0, 14)}</text>
                                     <text x="50" y=\"36\" text-anchor="middle" fill="#064e3b" font-size="3">S/N: ${serialNum.substring(0, 12)}</text>
                                     <line x1="18" y1="40" x2="82" y2="40" stroke="#059669" stroke-width="0.5"/>
                                     <text x="50" y="48" text-anchor="middle" fill="#666" font-size="3">Przegląd:</text>
@@ -174,7 +178,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                                         <circle cx="50" cy="50" r="40" fill="#e6f7f0" stroke="#064e3b" stroke-width="0.5"/>
                                         <text x="50" y="52" text-anchor="middle" fill="rgba(5, 150, 105, 0.15)" font-size="14" font-weight="bold" transform="rotate(-25, 50, 50)">ERIZED</text>
                                         <text x="50" y="20" text-anchor="middle" fill="#064e3b" font-size="5" font-weight="bold">KONTROLA</text>
-                                        <text x="50" y="30" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${deviceName.substring(0, 18)}</text>
+                                        <text x="50" y="30" text-anchor="middle" fill="#059669" font-size="4" font-weight="bold">${stickerName.substring(0, 18)}</text>
                                         <text x="50" y="38" text-anchor="middle" fill="#064e3b" font-size="3.5">S/N: ${serialNum}</text>
                                         <line x1="18" y1="42" x2="82" y2="42" stroke="#059669" stroke-width="0.5"/>
                                         <text x="50" y="50" text-anchor="middle" fill="#666" font-size="3.5">Przegląd:</text>
