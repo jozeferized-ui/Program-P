@@ -288,28 +288,38 @@ export function OrdersManager({ projectId, initialOrders, suppliers }: OrdersMan
                 url: newOrder.url
             });
 
-            // Automatically create an expense for the order
-            await createExpense({
-                projectId,
-                title: `Zamówienie: ${newOrder.title}`,
-                amount: parseFloat(newOrder.amount) || 0,
-                netAmount: parseFloat(newOrder.netAmount) || 0,
-                taxRate: parseFloat(newOrder.taxRate) || 0,
-                type: 'Purchase',
-                date: new Date(newOrder.date),
-                orderId: createdOrder.id
-            });
+            // Automatycznie dodaj do wydatków projektu
+            try {
+                await createExpense({
+                    projectId,
+                    title: `Zamówienie: ${newOrder.title}`,
+                    amount: parseFloat(newOrder.amount) || 0,
+                    netAmount: parseFloat(newOrder.netAmount) || 0,
+                    taxRate: parseFloat(newOrder.taxRate) || 0,
+                    type: 'Purchase',
+                    date: new Date(newOrder.date),
+                    orderId: createdOrder.id
+                });
+            } catch (expenseError) {
+                console.error('Błąd dodawania do wydatków:', expenseError);
+                toast.error('Zamówienie dodane, ale nie udało się dodać do wydatków');
+            }
 
-            // Automatically create a cost estimation entry for the order
-            await createCostEstimate({
-                projectId,
-                description: newOrder.title,
-                quantity: parseFloat(newOrder.quantity) || 1,
-                unit: newOrder.unit,
-                unitNetPrice: parseFloat(newOrder.netAmount) || 0,
-                taxRate: parseFloat(newOrder.taxRate) || 0,
-                section: 'Zamówienia'
-            });
+            // Automatycznie dodaj do kosztorysu projektu
+            try {
+                await createCostEstimate({
+                    projectId,
+                    description: newOrder.title,
+                    quantity: parseFloat(newOrder.quantity) || 1,
+                    unit: newOrder.unit,
+                    unitNetPrice: parseFloat(newOrder.netAmount) || 0,
+                    taxRate: parseFloat(newOrder.taxRate) || 0,
+                    section: 'Zamówienia'
+                });
+            } catch (costError) {
+                console.error('Błąd dodawania do kosztorysu:', costError);
+                toast.error('Zamówienie dodane, ale nie udało się dodać do kosztorysu');
+            }
 
             setNewOrder({
                 title: '',
@@ -324,7 +334,7 @@ export function OrdersManager({ projectId, initialOrders, suppliers }: OrdersMan
                 notes: '',
                 url: ''
             });
-            toast.success('Zamówienie zostało dodane');
+            toast.success('Zamówienie dodane (+ wydatek i kosztorys)');
         } catch (error) {
             console.error('Failed to add order:', error);
             toast.error('Wystąpił błąd podczas dodawania zamówienia');
