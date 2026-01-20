@@ -318,6 +318,7 @@ export function EmployeesManager({ initialEmployees }: EmployeesManagerProps) {
                     <Table>
                         <TableHeader>
                             <TableRow>
+                                <TableHead className="w-12 text-center">L.p.</TableHead>
                                 <TableHead>Imię i Nazwisko</TableHead>
                                 <TableHead>Stanowisko</TableHead>
                                 <TableHead>Kontakt</TableHead>
@@ -328,8 +329,11 @@ export function EmployeesManager({ initialEmployees }: EmployeesManagerProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredEmployees.map((employee) => (
+                            {filteredEmployees.map((employee, index) => (
                                 <TableRow key={employee.id}>
+                                    <TableCell className="text-center font-medium text-muted-foreground">
+                                        {index + 1}
+                                    </TableCell>
                                     <TableCell className="font-medium">
                                         {employee.firstName} {employee.lastName}
                                     </TableCell>
@@ -380,7 +384,7 @@ export function EmployeesManager({ initialEmployees }: EmployeesManagerProps) {
                             ))}
                             {filteredEmployees.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                                         Brak pracowników spełniających kryteria
                                     </TableCell>
                                 </TableRow>
