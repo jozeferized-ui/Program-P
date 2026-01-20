@@ -288,13 +288,19 @@ export function OrdersManager({ projectId, initialOrders, suppliers }: OrdersMan
                 url: newOrder.url
             });
 
+            // Oblicz całkowite kwoty
+            const quantity = parseFloat(newOrder.quantity) || 1;
+            const unitNetPrice = parseFloat(newOrder.netAmount) || 0;
+            const totalNetAmount = quantity * unitNetPrice;  // Całkowita kwota netto
+            const totalGrossAmount = parseFloat(newOrder.amount) || 0;  // Całkowita kwota brutto
+
             // Automatycznie dodaj do wydatków projektu
             try {
                 await createExpense({
                     projectId,
                     title: `Zamówienie: ${newOrder.title}`,
-                    amount: parseFloat(newOrder.amount) || 0,
-                    netAmount: parseFloat(newOrder.netAmount) || 0,
+                    amount: totalGrossAmount,
+                    netAmount: totalNetAmount,  // Teraz to jest CAŁKOWITA kwota netto
                     taxRate: parseFloat(newOrder.taxRate) || 0,
                     type: 'Purchase',
                     date: new Date(newOrder.date),
@@ -310,9 +316,9 @@ export function OrdersManager({ projectId, initialOrders, suppliers }: OrdersMan
                 await createCostEstimate({
                     projectId,
                     description: newOrder.title,
-                    quantity: parseFloat(newOrder.quantity) || 1,
+                    quantity: quantity,
                     unit: newOrder.unit,
-                    unitNetPrice: parseFloat(newOrder.netAmount) || 0,
+                    unitNetPrice: unitNetPrice,
                     taxRate: parseFloat(newOrder.taxRate) || 0,
                     section: 'Zamówienia'
                 });
