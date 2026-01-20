@@ -231,6 +231,7 @@ export async function updateProject(id: number, data: Partial<Project>) {
                 } : undefined,
             },
         });
+        revalidatePath('/');  // Dashboard
         revalidatePath('/projects');
         revalidatePath(`/projects/${id}`);
         return project;
