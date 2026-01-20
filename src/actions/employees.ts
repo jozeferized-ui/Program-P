@@ -88,7 +88,23 @@ export async function deleteEmployee(id: number) {
     }
 }
 
-export async function addEmployeePermission(employeeId: number, data: { name: string, issueDate: Date, expiryDate?: Date | null, number?: string }) {
+export async function addEmployeePermission(
+    employeeId: number,
+    data: {
+        name: string,
+        issueDate: Date,
+        expiryDate?: Date | null,
+        number?: string,
+        // BP Passport specific fields
+        company?: string,
+        issuer?: string,
+        registryNumber?: string,
+        isAuthorizer?: boolean,
+        isApprover?: boolean,
+        isTeamLeader?: boolean,
+        isCoordinator?: boolean,
+    }
+) {
     try {
         const permission = await prisma.employeePermission.create({
             data: {
@@ -97,6 +113,14 @@ export async function addEmployeePermission(employeeId: number, data: { name: st
                 issueDate: data.issueDate,
                 expiryDate: data.expiryDate,
                 number: data.number,
+                // BP Passport specific fields
+                company: data.company,
+                issuer: data.issuer,
+                registryNumber: data.registryNumber,
+                isAuthorizer: data.isAuthorizer ?? false,
+                isApprover: data.isApprover ?? false,
+                isTeamLeader: data.isTeamLeader ?? false,
+                isCoordinator: data.isCoordinator ?? false,
             },
         });
         revalidatePath('/management');

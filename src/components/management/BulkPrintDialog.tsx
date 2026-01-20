@@ -64,20 +64,67 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
         const printWindow = window.open('', '_blank', 'width=800,height=600');
         if (!printWindow) return;
 
-        // Pre-generate QR codes as data URLs
+        // Pre-generate QR codes as data URLs with overlay (matching ToolQrDialog style)
         const qrDataUrls = new Map<number, string>();
         for (const tool of filteredTools) {
             if (showQr && tool.id) {
                 try {
                     const url = `${origin}/tools/${tool.id}`;
-                    const dataUrl = await QRCode.toDataURL(url, {
-                        width: 100,
-                        margin: 1,
-                        errorCorrectionLevel: 'H'
+                    const initials = getInitials(tool.assignedEmployees);
+                    const toolNumber = String(tool.id || 0).padStart(4, '0');
+
+                    // Generate base QR code at high resolution for print quality
+                    const baseQrDataUrl = await QRCode.toDataURL(url, {
+                        width: 560,
+                        margin: 2,
+                        errorCorrectionLevel: 'H',
+                        color: {
+                            dark: '#1a1a2e',
+                            light: '#ffffff'
+                        }
                     });
-                    qrDataUrls.set(tool.id, dataUrl);
+
+                    // Create canvas to add overlay
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const size = 560; // High resolution for print quality
+                    canvas.width = size;
+                    canvas.height = size;
+
+                    if (ctx) {
+                        // Load and draw the base QR code
+                        const img = new Image();
+                        img.src = baseQrDataUrl;
+                        await new Promise((resolve) => {
+                            img.onload = resolve;
+                        });
+                        ctx.drawImage(img, 0, 0, size, size);
+
+                        // Draw overlay with initials and tool number (matching ToolQrDialog)
+                        const labelWidth = size * 0.22;
+                        const labelHeight = size * 0.12;
+                        const x = (size - labelWidth) / 2;
+                        const y = (size - labelHeight) / 2;
+
+                        // White background for label
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(x - 6, y - 6, labelWidth + 12, labelHeight + 12);
+
+                        // Initials (smaller, above) - scaled for high res
+                        ctx.fillStyle = '#1a1a2e';
+                        ctx.font = 'bold 24px Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(initials, size / 2, y + labelHeight * 0.35);
+
+                        // Tool number (larger, below) - scaled for high res
+                        ctx.font = 'bold 32px Arial, sans-serif';
+                        ctx.fillText(toolNumber, size / 2, y + labelHeight * 0.75);
+
+                        qrDataUrls.set(tool.id, canvas.toDataURL('image/png'));
+                    }
                 } catch (e) {
-                    console.error('QR generation error:', e);
+                    // Error handling without console.log
                 }
             }
         }
@@ -118,9 +165,8 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                             ${showQr && qrDataUrl ? `
                                 <div style="text-align: center;">
                                     <img src="${qrDataUrl}" width="55" height="55" style="display: block;"/>
-                                    <div style="font-size: 4px; font-weight: bold; margin-top: 1px;">${toolNumber}</div>
                                 </div>
-                            ` : ''}}
+                            ` : ''}
                             
                             ${showSticker ? `
                                 <svg width="55" height="55" viewBox="0 0 100 100">
@@ -137,7 +183,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                                     <text x="50" y="70" text-anchor="middle" fill="#000" font-size="4" font-weight="bold">Ważna do:</text>
                                     <text x="50" y="82" text-anchor="middle" fill="#000" font-size="6" font-weight="bold">${expiryStr}</text>
                                 </svg>
-                            ` : ''}}
+                            ` : ''}
                         </div>
                     `;
                 } else {
@@ -160,7 +206,6 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                                 ${showQr && qrDataUrl ? `
                                     <div style="text-align: center;">
                                         <img src="${qrDataUrl}" width="70" height="70" style="display: block;"/>
-                                        <div style="font-size: 6px; font-weight: bold; margin-top: 2px;">${toolNumber}</div>
                                     </div>
                                 ` : ''}
                                 
@@ -179,7 +224,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                                         <text x="50" y="71" text-anchor="middle" fill="#000" font-size="4" font-weight="bold">Ważna do:</text>
                                         <text x="50" y="82" text-anchor="middle" fill="#000" font-size="6" font-weight="bold">${expiryStr}</text>
                                     </svg>
-                                ` : ''}}
+                                ` : ''}
                             </div>
                         </div>
                     `;

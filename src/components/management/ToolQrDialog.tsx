@@ -53,7 +53,7 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
         const ctx = outputCanvas.getContext('2d');
         if (!ctx) return;
 
-        const size = 280;
+        const size = 560; // High resolution for better quality
         outputCanvas.width = size;
         outputCanvas.height = size;
 
@@ -68,17 +68,17 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
 
         // White background for label
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x - 3, y - 3, labelWidth + 6, labelHeight + 6);
+        ctx.fillRect(x - 6, y - 6, labelWidth + 12, labelHeight + 12);
 
-        // Initials (smaller, above)
+        // Initials (smaller, above) - scaled for high res
         ctx.fillStyle = '#1a1a2e';
-        ctx.font = 'bold 12px Arial, sans-serif';
+        ctx.font = 'bold 24px Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(initials, size / 2, y + labelHeight * 0.35);
 
-        // Tool number (larger, below)
-        ctx.font = 'bold 16px Arial, sans-serif';
+        // Tool number (larger, below) - scaled for high res
+        ctx.font = 'bold 32px Arial, sans-serif';
         ctx.fillText(toolNumber, size / 2, y + labelHeight * 0.75);
 
         // Save as data URL
@@ -183,7 +183,7 @@ export function ToolQrDialog({ open, onOpenChange, tool }: ToolQrDialogProps) {
                     <div ref={qrContainerRef} className="hidden">
                         <QRCodeCanvas
                             value={toolUrl}
-                            size={280}
+                            size={560}
                             level="H"
                             includeMargin
                             bgColor="#ffffff"

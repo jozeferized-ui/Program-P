@@ -7,8 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lock, LogIn, ArrowRight, Check, LogOut, User } from 'lucide-react';
-import { authenticateForToolTransfer, transferTool, getEmployeesForTransfer, logoutToolTransfer } from '@/actions/toolTransfer';
+import { Lock, LogIn, ArrowRight, Check, LogOut, User, Trash2 } from 'lucide-react';
+import { authenticateForToolTransfer, transferTool, getEmployeesForTransfer, logoutToolTransfer, clearTransfer } from '@/actions/toolTransfer';
 import { toast } from 'sonner';
 
 interface TransferSectionProps {
@@ -33,6 +33,7 @@ export function TransferSection({ toolId, currentAssignee, currentTransferredTo 
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
     const [notes, setNotes] = useState('');
     const [transferSuccess, setTransferSuccess] = useState(false);
+    const [clearSuccess, setClearSuccess] = useState(false);
 
     // Load employees on mount
     useEffect(() => {
@@ -87,6 +88,24 @@ export function TransferSection({ toolId, currentAssignee, currentTransferredTo 
         setIsLoading(false);
     };
 
+    const handleClearTransfer = async () => {
+        setIsLoading(true);
+
+        const result = await clearTransfer(toolId);
+
+        if (result.success) {
+            setClearSuccess(true);
+            toast.success('Przekazanie usunięte!');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            toast.error(result.error || 'Błąd usuwania przekazania');
+        }
+
+        setIsLoading(false);
+    };
+
     const handleLogout = async () => {
         await logoutToolTransfer();
         setIsLoggedIn(false);
@@ -96,14 +115,16 @@ export function TransferSection({ toolId, currentAssignee, currentTransferredTo 
     };
 
     // Success state
-    if (transferSuccess) {
+    if (transferSuccess || clearSuccess) {
         return (
             <Card className="bg-emerald-50 border-emerald-200 shadow-lg rounded-2xl">
                 <CardContent className="p-6 text-center">
                     <div className="mx-auto bg-emerald-500 text-white p-4 rounded-full w-fit mb-4">
                         <Check className="w-8 h-8" />
                     </div>
-                    <p className="text-lg font-bold text-emerald-900">Narzędzie przekazane!</p>
+                    <p className="text-lg font-bold text-emerald-900">
+                        {clearSuccess ? 'Przekazanie usunięte!' : 'Narzędzie przekazane!'}
+                    </p>
                     <p className="text-sm text-emerald-700 mt-1">Strona zostanie odświeżona...</p>
                 </CardContent>
             </Card>
@@ -150,7 +171,7 @@ export function TransferSection({ toolId, currentAssignee, currentTransferredTo 
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="np. Na budowę przy ul. Lipowej"
-                                className="bg-white border-blue-200 mt-1"
+                                className="bg-white border-blue-200 mt-1 text-black placeholder:text-slate-400"
                                 rows={2}
                             />
                         </div>
@@ -166,6 +187,19 @@ export function TransferSection({ toolId, currentAssignee, currentTransferredTo 
                                 </>
                             )}
                         </Button>
+                        {/* Show clear transfer button if there's an existing transfer */}
+                        {currentTransferredTo && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleClearTransfer}
+                                disabled={isLoading}
+                                className="w-full border-red-300 text-red-600 hover:bg-red-50 font-bold py-5 rounded-xl"
+                            >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Usuń przekazanie (oddanie narzędzia)
+                            </Button>
+                        )}
                     </form>
                 </CardContent>
             </Card>

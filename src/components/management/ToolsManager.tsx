@@ -484,6 +484,7 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                 </TableHead>
                                 <TableHead className="w-12">Lp.</TableHead>
                                 <TableHead>Narzędzie</TableHead>
+                                <TableHead>Nr seryjny</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('inspectionExpiryDate')}>
                                     Przegląd (Ważność) <ArrowUpDown className="ml-2 h-4 w-4 inline" />
@@ -597,7 +598,7 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                             })}
                             {filteredTools.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                                         Brak narzędzi spełniających kryteria
                                     </TableCell>
                                 </TableRow>

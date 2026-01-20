@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Trash2, ShoppingCart, Check, X, Edit2, Link as LinkIcon, FileText, LayoutGrid, List, Download, ArrowDownCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import ExcelJS from 'exceljs';
+// ExcelJS jest importowany dynamicznie w funkcji eksportu dla lepszej wydajności
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core';
 import { createOrder, updateOrder, deleteOrder } from '@/actions/orders';
@@ -425,6 +425,9 @@ export function OrdersManager({ projectId, initialOrders, suppliers }: OrdersMan
             toast.error("Brak zamówień do eksportu");
             return;
         }
+
+        // Dynamiczny import ExcelJS dla lepszej wydajności
+        const ExcelJS = (await import('exceljs')).default;
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Zamówienia');

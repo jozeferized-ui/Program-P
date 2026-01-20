@@ -199,6 +199,14 @@ export interface EmployeePermission {
   issueDate: Date;
   expiryDate?: Date | null;
   number?: string | null;
+  // BP Passport specific fields
+  company?: string | null;
+  issuer?: string | null;
+  registryNumber?: string | null;
+  isAuthorizer?: boolean;
+  isApprover?: boolean;
+  isTeamLeader?: boolean;
+  isCoordinator?: boolean;
   createdAt?: Date;
 }
 

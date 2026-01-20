@@ -302,6 +302,14 @@ model EmployeePermission {
   issueDate      DateTime
   expiryDate     DateTime?
   number         String?
+  // BP Passport specific fields
+  company        String?
+  issuer         String?
+  registryNumber String?
+  isAuthorizer   Boolean  @default(false)
+  isApprover     Boolean  @default(false)
+  isTeamLeader   Boolean  @default(false)
+  isCoordinator  Boolean  @default(false)
   createdAt      DateTime @default(now())
 }
 

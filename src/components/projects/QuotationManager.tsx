@@ -8,8 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, FileText, Download, Edit2, X, Check } from 'lucide-react';
-import ExcelJS from 'exceljs';
-import { pdf } from '@react-pdf/renderer';
+// ExcelJS i pdf są importowane dynamicznie w funkcjach eksportu dla lepszej wydajności
 import { QuotationPDF } from './QuotationPDF';
 import {
     createQuotationItem,
@@ -299,6 +298,9 @@ export function QuotationManager({ projectId, items, project }: QuotationManager
     const handleExportToExcel = async () => {
         if (!items || items.length === 0) return;
 
+        // Dynamiczny import ExcelJS dla lepszej wydajności
+        const ExcelJS = (await import('exceljs')).default;
+
         // Group items by section
         const groupedItems: Record<string, QuotationItem[]> = {};
         items.forEach(item => {
@@ -486,6 +488,9 @@ export function QuotationManager({ projectId, items, project }: QuotationManager
         if (!items || items.length === 0) return;
 
         try {
+            // Dynamiczny import pdf dla lepszej wydajności
+            const { pdf } = await import('@react-pdf/renderer');
+
             const blob = await pdf(
                 <QuotationPDF
                     items={items}

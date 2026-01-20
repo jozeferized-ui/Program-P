@@ -177,3 +177,38 @@ export async function logoutToolTransfer() {
     cookieStore.delete('tool-transfer-token');
     return { success: true };
 }
+
+// Clear transfer (when tool is returned)
+export async function clearTransfer(toolId: number) {
+    try {
+        // Verify transfer token
+        const cookieStore = await cookies();
+        const token = cookieStore.get('tool-transfer-token')?.value;
+
+        if (!token) {
+            return { success: false, error: 'Sesja wygasła. Zaloguj się ponownie.' };
+        }
+
+        const { payload } = await jwtVerify(token, JWT_SECRET);
+        if (payload.toolId !== toolId || payload.purpose !== 'tool-transfer') {
+            return { success: false, error: 'Nieprawidłowy token' };
+        }
+
+        // Clear transfer data from tool
+        await (prisma as any).tool.update({
+            where: { id: toolId },
+            data: {
+                transferredToId: null,
+                transferredAt: null,
+                transferNotes: null,
+            }
+        });
+
+        // Clear transfer cookie
+        cookieStore.delete('tool-transfer-token');
+
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: 'Błąd usuwania przekazania' };
+    }
+}

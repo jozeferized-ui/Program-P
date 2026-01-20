@@ -60,6 +60,7 @@ export function EmployeesManager({ initialEmployees }: EmployeesManagerProps) {
                     {employee.employeePermissions.map(p => {
                         const isExpired = p.expiryDate && differenceInDays(new Date(p.expiryDate), today) < 0;
                         const isExpiringSoon = p.expiryDate && !isExpired && differenceInDays(new Date(p.expiryDate), today) < 30;
+                        const daysRemaining = p.expiryDate ? differenceInDays(new Date(p.expiryDate), today) : null;
 
                         return (
                             <Badge
@@ -73,6 +74,11 @@ export function EmployeesManager({ initialEmployees }: EmployeesManagerProps) {
                                 `}
                             >
                                 {p.name}
+                                {daysRemaining !== null && (
+                                    <span className="ml-1 font-semibold">
+                                        ({daysRemaining > 0 ? `${daysRemaining}d` : 'wygasło'})
+                                    </span>
+                                )}
                             </Badge>
                         );
                     })}
