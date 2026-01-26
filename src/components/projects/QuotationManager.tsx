@@ -75,8 +75,12 @@ export function QuotationManager({ projectId, items, project }: QuotationManager
     };
 
     // Auto-update project totalValue when quotation total changes
+    // Only sync when there are quotation items - allows manual value setting when no items exist
     useEffect(() => {
         if (!items || !project) return;
+
+        // Don't override manual value when there are no quotation items
+        if (items.length === 0) return;
 
         const quotationTotal = items.reduce((sum, item) => sum + item.total, 0);
 

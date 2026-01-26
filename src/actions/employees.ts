@@ -108,7 +108,9 @@ export async function addEmployeePermission(
     try {
         const permission = await prisma.employeePermission.create({
             data: {
-                employeeId,
+                employee: {
+                    connect: { id: employeeId }
+                },
                 name: data.name,
                 issueDate: data.issueDate,
                 expiryDate: data.expiryDate,
@@ -127,7 +129,8 @@ export async function addEmployeePermission(
         return permission;
     } catch (error) {
         console.error('Error adding employee permission:', error);
-        throw error;
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Nie udało się dodać uprawnienia: ${message}`);
     }
 }
 

@@ -55,10 +55,26 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
 
         setIsSubmitting(true);
         try {
+            // Properly parse dates from input (format: YYYY-MM-DD)
+            const parsedIssueDate = new Date(issueDate + "T00:00:00");
+            const parsedExpiryDate = expiryDate ? new Date(expiryDate + "T00:00:00") : null;
+
+            // Validate parsed dates
+            if (isNaN(parsedIssueDate.getTime())) {
+                toast.error("Nieprawidłowy format daty wystawienia");
+                setIsSubmitting(false);
+                return;
+            }
+            if (parsedExpiryDate && isNaN(parsedExpiryDate.getTime())) {
+                toast.error("Nieprawidłowy format daty ważności");
+                setIsSubmitting(false);
+                return;
+            }
+
             await addEmployeePermission(employee.id!, {
                 name: permissionType === "bp-passport" ? "Paszport BP" : name,
-                issueDate: new Date(issueDate),
-                expiryDate: expiryDate ? new Date(expiryDate) : null,
+                issueDate: parsedIssueDate,
+                expiryDate: parsedExpiryDate,
                 number,
                 // BP Passport specific fields
                 company: permissionType === "bp-passport" ? company : undefined,
@@ -84,7 +100,9 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
             setIsTeamLeader(false);
             setIsCoordinator(false);
         } catch (error) {
-            toast.error("Błąd podczas dodawania uprawnienia");
+            console.error("Error adding permission:", error);
+            const errorMessage = error instanceof Error ? error.message : "Nieznany błąd";
+            toast.error(`Błąd podczas dodawania uprawnienia: ${errorMessage}`);
         } finally {
             setIsSubmitting(false);
         }
