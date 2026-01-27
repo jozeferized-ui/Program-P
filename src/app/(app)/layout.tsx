@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/Sidebar";
 import { MobileHeader, MobileBottomNav } from "@/components/MobileNav";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
+import { InactivityLogout } from "@/components/InactivityLogout";
 
 export default function AppLayout({
     children,
@@ -27,6 +28,9 @@ export default function AppLayout({
 
             {/* Offline Indicator */}
             <OfflineIndicator />
+
+            {/* Auto-logout after 15 minutes of inactivity */}
+            <InactivityLogout />
         </div>
     );
 }
