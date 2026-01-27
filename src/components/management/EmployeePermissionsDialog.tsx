@@ -1,9 +1,10 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Employee } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +38,20 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
     const [isTeamLeader, setIsTeamLeader] = useState(false);
     const [isCoordinator, setIsCoordinator] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // State for tracking deleted permissions locally for immediate UI update
+    const [deletedIds, setDeletedIds] = useState<Set<number>>(new Set());
+    // State for delete confirmation dialog
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [permissionToDelete, setPermissionToDelete] = useState<number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Reset deletedIds when dialog closes or employee changes
+    useEffect(() => {
+        if (!open) {
+            setDeletedIds(new Set());
+        }
+    }, [open, employee?.id]);
 
     if (!employee) return null;
 
@@ -108,13 +123,26 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
         }
     };
 
-    const handleDelete = async (id: number) => {
-        if (!confirm("Czy na pewno chcesz usunąć to uprawnienie?")) return;
+    const handleDeleteClick = (id: number) => {
+        setPermissionToDelete(id);
+        setDeleteConfirmOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (permissionToDelete === null) return;
+
+        setIsDeleting(true);
         try {
-            await deleteEmployeePermission(id);
+            await deleteEmployeePermission(permissionToDelete);
+            // Immediately update local state to hide the deleted permission
+            setDeletedIds(prev => new Set(prev).add(permissionToDelete));
             toast.success("Usunięto uprawnienie");
         } catch (_error) {
             toast.error("Błąd podczas usuwania");
+        } finally {
+            setIsDeleting(false);
+            setDeleteConfirmOpen(false);
+            setPermissionToDelete(null);
         }
     };
 
@@ -127,142 +155,109 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
 
         if (daysLeft < 0) {
             return (
-                <div className="flex items-center text-red-600 font-bold">
-                    <AlertCircle className="w-4 h-4 mr-1" />
-                    NIEWAŻNE
+                <div className="flex items-center text-red-600 font-bold text-xs">
+                    <AlertCircle className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span>NIEWAŻNE</span>
                 </div>
             );
         } else if (daysLeft < 30) {
             return (
-                <div className="flex items-center text-yellow-600 font-bold">
-                    <AlertTriangle className="w-4 h-4 mr-1" />
-                    Wygaśnie za {daysLeft} dni
+                <div className="flex items-center text-yellow-600 font-bold text-xs">
+                    <AlertTriangle className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span>{daysLeft}d</span>
                 </div>
             );
         } else {
             return (
-                <div className="flex items-center text-green-600 font-medium">
-                    <CheckCircle className="w-4 h-4 mr-1" />
-                    Ważne
+                <div className="flex items-center text-green-600 font-medium text-xs">
+                    <CheckCircle className="w-3 h-3 mr-1 flex-shrink-0" />
+                    <span>OK</span>
                 </div>
             );
         }
     };
 
+    // Filter out deleted permissions from display
+    const visiblePermissions = employee.employeePermissions?.filter(p => !deletedIds.has(p.id)) || [];
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <DialogHeader className="p-6 pb-0">
-                    <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-                        <ShieldCheck className="w-6 h-6 text-primary" />
-                        Uprawnienia: {employee.firstName} {employee.lastName}
-                    </DialogTitle>
-                </DialogHeader>
+        <>
+            <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Potwierdź usunięcie</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Czy na pewno chcesz usunąć to uprawnienie? Ta operacja jest nieodwracalna.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isDeleting}>Anuluj</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteConfirm}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            {isDeleting ? "Usuwanie..." : "Usuń"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                    {/* Add New Permission Section */}
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2 pb-2 border-b">
-                            <Plus className="w-4 h-4 text-muted-foreground" />
-                            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Dodaj nowe uprawnienie</h3>
-                        </div>
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-0">
+                        <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                            <ShieldCheck className="w-6 h-6 text-primary" />
+                            Uprawnienia: {employee.firstName} {employee.lastName}
+                        </DialogTitle>
+                    </DialogHeader>
 
-                        <form onSubmit={handleAdd} className="space-y-4 bg-muted/20 p-6 rounded-xl border border-dashed border-muted-foreground/30">
-                            {/* Permission Type Selection */}
-                            <div className="space-y-2">
-                                <Label className="text-xs font-medium uppercase text-muted-foreground">Typ Uprawnienia</Label>
-                                <Select value={permissionType} onValueChange={(value: "standard" | "bp-passport") => setPermissionType(value)}>
-                                    <SelectTrigger className="bg-background shadow-sm">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="standard">Standardowe uprawnienie</SelectItem>
-                                        <SelectItem value="bp-passport">Paszport BP</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                    <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                        {/* Add New Permission Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                                <Plus className="w-4 h-4 text-muted-foreground" />
+                                <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Dodaj nowe uprawnienie</h3>
                             </div>
 
-                            {/* Standard Permission Fields */}
-                            {permissionType === "standard" && (
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div className="space-y-2 lg:col-span-2">
-                                        <Label className="text-xs font-medium uppercase text-muted-foreground">Nazwa Uprawnienia</Label>
-                                        <Input
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            placeholder="np. SEP G1 (E/D), UDT I WJO"
-                                            className="bg-background shadow-sm"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-medium uppercase text-muted-foreground">Numer certyfikatu</Label>
-                                        <Input
-                                            value={number}
-                                            onChange={(e) => setNumber(e.target.value)}
-                                            placeholder="opcjonalnie"
-                                            className="bg-background shadow-sm"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-medium uppercase text-muted-foreground">Data wystawienia</Label>
-                                        <Input
-                                            type="date"
-                                            value={issueDate}
-                                            onChange={(e) => setIssueDate(e.target.value)}
-                                            className="bg-background shadow-sm"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-medium uppercase text-muted-foreground">Data ważności</Label>
-                                        <Input
-                                            type="date"
-                                            value={expiryDate}
-                                            onChange={(e) => setExpiryDate(e.target.value)}
-                                            className="bg-background shadow-sm"
-                                        />
-                                    </div>
+                            <form onSubmit={handleAdd} className="space-y-4 bg-muted/20 p-6 rounded-xl border border-dashed border-muted-foreground/30">
+                                {/* Permission Type Selection */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-medium uppercase text-muted-foreground">Typ Uprawnienia</Label>
+                                    <Select value={permissionType} onValueChange={(value: "standard" | "bp-passport") => setPermissionType(value)}>
+                                        <SelectTrigger className="bg-background shadow-sm">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="standard">Standardowe uprawnienie</SelectItem>
+                                            <SelectItem value="bp-passport">Paszport BP</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                            )}
 
-                            {/* BP Passport Fields */}
-                            {permissionType === "bp-passport" && (
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
-                                                <Building2 className="w-3 h-3" />
-                                                Firma
-                                            </Label>
+                                {/* Standard Permission Fields */}
+                                {permissionType === "standard" && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div className="space-y-2 lg:col-span-2">
+                                            <Label className="text-xs font-medium uppercase text-muted-foreground">Nazwa Uprawnienia</Label>
                                             <Input
-                                                value={company}
-                                                onChange={(e) => setCompany(e.target.value)}
-                                                placeholder="Nazwa firmy"
+                                                value={name}
+                                                onChange={(e) => setName(e.target.value)}
+                                                placeholder="np. SEP G1 (E/D), UDT I WJO"
                                                 className="bg-background shadow-sm"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-medium uppercase text-muted-foreground">Numer ewidencyjny</Label>
+                                            <Label className="text-xs font-medium uppercase text-muted-foreground">Numer certyfikatu</Label>
                                             <Input
-                                                value={registryNumber}
-                                                onChange={(e) => setRegistryNumber(e.target.value)}
-                                                placeholder="Nr ewidencyjny"
-                                                className="bg-background shadow-sm"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-medium uppercase text-muted-foreground">Paszport wydał</Label>
-                                            <Input
-                                                value={issuer}
-                                                onChange={(e) => setIssuer(e.target.value)}
-                                                placeholder="Imię i nazwisko"
+                                                value={number}
+                                                onChange={(e) => setNumber(e.target.value)}
+                                                placeholder="opcjonalnie"
                                                 className="bg-background shadow-sm"
                                             />
                                         </div>
                                         <div className="space-y-2">
-                                            <Label className="text-xs font-medium uppercase text-muted-foreground">W dniu (data wystawienia)</Label>
+                                            <Label className="text-xs font-medium uppercase text-muted-foreground">Data wystawienia</Label>
                                             <Input
                                                 type="date"
                                                 value={issueDate}
@@ -270,183 +265,242 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                                                 className="bg-background shadow-sm"
                                             />
                                         </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-medium uppercase text-muted-foreground">Data ważności</Label>
+                                            <Input
+                                                type="date"
+                                                value={expiryDate}
+                                                onChange={(e) => setExpiryDate(e.target.value)}
+                                                className="bg-background shadow-sm"
+                                            />
+                                        </div>
                                     </div>
+                                )}
 
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-medium uppercase text-muted-foreground">Data ważności paszportu</Label>
-                                        <Input
-                                            type="date"
-                                            value={expiryDate}
-                                            onChange={(e) => setExpiryDate(e.target.value)}
-                                            className="bg-background shadow-sm"
-                                        />
-                                    </div>
+                                {/* BP Passport Fields */}
+                                {permissionType === "bp-passport" && (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
+                                                    <Building2 className="w-3 h-3" />
+                                                    Firma
+                                                </Label>
+                                                <Input
+                                                    value={company}
+                                                    onChange={(e) => setCompany(e.target.value)}
+                                                    placeholder="Nazwa firmy"
+                                                    className="bg-background shadow-sm"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-medium uppercase text-muted-foreground">Numer ewidencyjny</Label>
+                                                <Input
+                                                    value={registryNumber}
+                                                    onChange={(e) => setRegistryNumber(e.target.value)}
+                                                    placeholder="Nr ewidencyjny"
+                                                    className="bg-background shadow-sm"
+                                                />
+                                            </div>
+                                        </div>
 
-                                    <div className="space-y-3 pt-2 border-t">
-                                        <Label className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
-                                            <UserCheck className="w-3 h-3" />
-                                            Role i uprawnienia
-                                        </Label>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="authorizer"
-                                                    checked={isAuthorizer}
-                                                    onCheckedChange={(checked) => setIsAuthorizer(checked as boolean)}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-medium uppercase text-muted-foreground">Paszport wydał</Label>
+                                                <Input
+                                                    value={issuer}
+                                                    onChange={(e) => setIssuer(e.target.value)}
+                                                    placeholder="Imię i nazwisko"
+                                                    className="bg-background shadow-sm"
                                                 />
-                                                <label htmlFor="authorizer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    Poleceniodawca
-                                                </label>
                                             </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="approver"
-                                                    checked={isApprover}
-                                                    onCheckedChange={(checked) => setIsApprover(checked as boolean)}
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-medium uppercase text-muted-foreground">W dniu (data wystawienia)</Label>
+                                                <Input
+                                                    type="date"
+                                                    value={issueDate}
+                                                    onChange={(e) => setIssueDate(e.target.value)}
+                                                    className="bg-background shadow-sm"
                                                 />
-                                                <label htmlFor="approver" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    Dopuszczający
-                                                </label>
                                             </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="teamleader"
-                                                    checked={isTeamLeader}
-                                                    onCheckedChange={(checked) => setIsTeamLeader(checked as boolean)}
-                                                />
-                                                <label htmlFor="teamleader" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    Kierujący zespołem
-                                                </label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <Checkbox
-                                                    id="coordinator"
-                                                    checked={isCoordinator}
-                                                    onCheckedChange={(checked) => setIsCoordinator(checked as boolean)}
-                                                />
-                                                <label htmlFor="coordinator" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                                    Koordynujący
-                                                </label>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-xs font-medium uppercase text-muted-foreground">Data ważności paszportu</Label>
+                                            <Input
+                                                type="date"
+                                                value={expiryDate}
+                                                onChange={(e) => setExpiryDate(e.target.value)}
+                                                className="bg-background shadow-sm"
+                                            />
+                                        </div>
+
+                                        <div className="space-y-3 pt-2 border-t">
+                                            <Label className="text-xs font-medium uppercase text-muted-foreground flex items-center gap-2">
+                                                <UserCheck className="w-3 h-3" />
+                                                Role i uprawnienia
+                                            </Label>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="authorizer"
+                                                        checked={isAuthorizer}
+                                                        onCheckedChange={(checked) => setIsAuthorizer(checked as boolean)}
+                                                    />
+                                                    <label htmlFor="authorizer" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                        Poleceniodawca
+                                                    </label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="approver"
+                                                        checked={isApprover}
+                                                        onCheckedChange={(checked) => setIsApprover(checked as boolean)}
+                                                    />
+                                                    <label htmlFor="approver" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                        Dopuszczający
+                                                    </label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="teamleader"
+                                                        checked={isTeamLeader}
+                                                        onCheckedChange={(checked) => setIsTeamLeader(checked as boolean)}
+                                                    />
+                                                    <label htmlFor="teamleader" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                        Kierujący zespołem
+                                                    </label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id="coordinator"
+                                                        checked={isCoordinator}
+                                                        onCheckedChange={(checked) => setIsCoordinator(checked as boolean)}
+                                                    />
+                                                    <label htmlFor="coordinator" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                        Koordynujący
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
+                                )}
+
+                                <div className="flex justify-end pt-4">
+                                    <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto px-8">
+                                        <Plus className="w-4 h-4 mr-2" />
+                                        Zatwierdź i Dodaj
+                                    </Button>
                                 </div>
-                            )}
+                            </form>
+                        </div>
 
-                            <div className="flex justify-end pt-4">
-                                <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto px-8">
-                                    <Plus className="w-4 h-4 mr-2" />
-                                    Zatwierdź i Dodaj
-                                </Button>
+                        {/* Existing Permissions List */}
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b">
+                                <AlertCircle className="w-4 h-4 text-muted-foreground" />
+                                <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Aktualne certyfikaty i uprawnienia</h3>
                             </div>
-                        </form>
-                    </div>
 
-                    {/* Existing Permissions List */}
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2 pb-2 border-b">
-                            <AlertCircle className="w-4 h-4 text-muted-foreground" />
-                            <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Aktualne certyfikaty i uprawnienia</h3>
-                        </div>
-
-                        <div className="rounded-xl border overflow-hidden bg-background shadow-sm">
-                            <Table>
-                                <TableHeader className="bg-muted/30">
-                                    <TableRow>
-                                        <TableHead className="w-[30%]">Nazwa</TableHead>
-                                        <TableHead>Numer</TableHead>
-                                        <TableHead>Wystawiono</TableHead>
-                                        <TableHead>Ważność</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Opcje</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {employee.employeePermissions?.length === 0 ? (
+                            <div className="rounded-xl border overflow-hidden bg-background shadow-sm">
+                                <Table>
+                                    <TableHeader className="bg-muted/30">
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-12 text-muted-foreground italic">
-                                                Brak przypisanych uprawnień dla tego pracownika.
-                                            </TableCell>
+                                            <TableHead className="w-[30%]">Nazwa</TableHead>
+                                            <TableHead>Numer</TableHead>
+                                            <TableHead>Wystawiono</TableHead>
+                                            <TableHead>Ważność</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Opcje</TableHead>
                                         </TableRow>
-                                    ) : (
-                                        employee.employeePermissions?.map((p) => {
-                                            const isBPPassport = p.name === "Paszport BP" || p.company;
-                                            const roles = [];
-                                            if (p.isAuthorizer) roles.push("Poleceniodawca");
-                                            if (p.isApprover) roles.push("Dopuszczający");
-                                            if (p.isTeamLeader) roles.push("Kierujący");
-                                            if (p.isCoordinator) roles.push("Koordynujący");
+                                    </TableHeader>
+                                    <TableBody>
+                                        {visiblePermissions.length === 0 ? (
+                                            <TableRow>
+                                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground italic">
+                                                    Brak przypisanych uprawnień dla tego pracownika.
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            visiblePermissions.map((p) => {
+                                                const isBPPassport = p.name === "Paszport BP" || p.company;
+                                                const roles = [];
+                                                if (p.isAuthorizer) roles.push("Poleceniodawca");
+                                                if (p.isApprover) roles.push("Dopuszczający");
+                                                if (p.isTeamLeader) roles.push("Kierujący");
+                                                if (p.isCoordinator) roles.push("Koordynujący");
 
-                                            return (
-                                                <TableRow key={p.id} className="hover:bg-muted/10 transition-colors">
-                                                    <TableCell>
-                                                        <div className="space-y-1">
-                                                            <div className="font-semibold text-primary">{p.name}</div>
-                                                            {isBPPassport && (
-                                                                <>
-                                                                    {p.company && (
-                                                                        <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                                            <Building2 className="w-3 h-3" />
-                                                                            {p.company}
-                                                                        </div>
-                                                                    )}
-                                                                    {p.issuer && (
-                                                                        <div className="text-xs text-muted-foreground">
-                                                                            Wydał: {p.issuer}
-                                                                        </div>
-                                                                    )}
-                                                                    {roles.length > 0 && (
-                                                                        <div className="flex flex-wrap gap-1 mt-1">
-                                                                            {roles.map((role, idx) => (
-                                                                                <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0">
-                                                                                    {role}
-                                                                                </Badge>
-                                                                            ))}
-                                                                        </div>
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-sm font-mono text-muted-foreground">
-                                                        {isBPPassport && p.registryNumber ? (
-                                                            <div>
-                                                                <div className="font-medium">{p.registryNumber}</div>
-                                                                <div className="text-[10px] text-muted-foreground">{p.number || "—"}</div>
+                                                return (
+                                                    <TableRow key={p.id} className="hover:bg-muted/10 transition-colors">
+                                                        <TableCell>
+                                                            <div className="space-y-1">
+                                                                <div className="font-semibold text-primary">{p.name}</div>
+                                                                {isBPPassport && (
+                                                                    <>
+                                                                        {p.company && (
+                                                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                                <Building2 className="w-3 h-3" />
+                                                                                {p.company}
+                                                                            </div>
+                                                                        )}
+                                                                        {p.issuer && (
+                                                                            <div className="text-xs text-muted-foreground">
+                                                                                Wydał: {p.issuer}
+                                                                            </div>
+                                                                        )}
+                                                                        {roles.length > 0 && (
+                                                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                                                {roles.map((role, idx) => (
+                                                                                    <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0">
+                                                                                        {role}
+                                                                                    </Badge>
+                                                                                ))}
+                                                                            </div>
+                                                                        )}
+                                                                    </>
+                                                                )}
                                                             </div>
-                                                        ) : (
-                                                            p.number || "—"
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-sm">{format(new Date(p.issueDate), "dd MMM yyyy")}</TableCell>
-                                                    <TableCell className="text-sm">
-                                                        {p.expiryDate ? (
-                                                            <div>
-                                                                <div className="font-medium">{format(new Date(p.expiryDate), "dd MMM yyyy")}</div>
-                                                                <div className="text-[10px] text-muted-foreground">
-                                                                    ({differenceInDays(new Date(p.expiryDate), new Date())} dni ważności)
+                                                        </TableCell>
+                                                        <TableCell className="text-sm font-mono text-muted-foreground">
+                                                            {isBPPassport && p.registryNumber ? (
+                                                                <div>
+                                                                    <div className="font-medium">{p.registryNumber}</div>
+                                                                    <div className="text-[10px] text-muted-foreground">{p.number || "—"}</div>
                                                                 </div>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-muted-foreground uppercase text-[10px] tracking-tighter bg-muted px-1.5 py-0.5 rounded">Bezterminowo</span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>{getStatusBadge(p.expiryDate)}</TableCell>
-                                                    <TableCell className="text-right">
-                                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(p.id)} className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50">
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
+                                                            ) : (
+                                                                p.number || "—"
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-sm">{format(new Date(p.issueDate), "dd MMM yyyy")}</TableCell>
+                                                        <TableCell className="text-sm">
+                                                            {p.expiryDate ? (
+                                                                <div>
+                                                                    <div className="font-medium">{format(new Date(p.expiryDate), "dd MMM yyyy")}</div>
+                                                                    <div className="text-[10px] text-muted-foreground">
+                                                                        ({differenceInDays(new Date(p.expiryDate), new Date())} dni ważności)
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-muted-foreground uppercase text-[10px] tracking-tighter bg-muted px-1.5 py-0.5 rounded">Bezterminowo</span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell>{getStatusBadge(p.expiryDate)}</TableCell>
+                                                        <TableCell className="text-right">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(p.id)} className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50">
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )
+                                            })
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </DialogContent>
-        </Dialog>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
