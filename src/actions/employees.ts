@@ -145,3 +145,45 @@ export async function deleteEmployeePermission(id: number) {
         throw error;
     }
 }
+
+export async function updateEmployeePermission(
+    id: number,
+    data: {
+        name?: string,
+        issueDate?: Date,
+        expiryDate?: Date | null,
+        number?: string,
+        company?: string,
+        issuer?: string,
+        registryNumber?: string,
+        isAuthorizer?: boolean,
+        isApprover?: boolean,
+        isTeamLeader?: boolean,
+        isCoordinator?: boolean,
+    }
+) {
+    try {
+        const permission = await prisma.employeePermission.update({
+            where: { id },
+            data: {
+                name: data.name,
+                issueDate: data.issueDate,
+                expiryDate: data.expiryDate,
+                number: data.number,
+                company: data.company,
+                issuer: data.issuer,
+                registryNumber: data.registryNumber,
+                isAuthorizer: data.isAuthorizer,
+                isApprover: data.isApprover,
+                isTeamLeader: data.isTeamLeader,
+                isCoordinator: data.isCoordinator,
+            },
+        });
+        revalidatePath('/management');
+        return permission;
+    } catch (error) {
+        console.error('Error updating employee permission:', error);
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(`Nie udało się zaktualizować uprawnienia: ${message}`);
+    }
+}

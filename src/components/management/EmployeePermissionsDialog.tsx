@@ -10,10 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format, differenceInDays } from "date-fns";
-import { Trash2, AlertTriangle, CheckCircle, AlertCircle, Plus, ShieldCheck, Building2, UserCheck } from "lucide-react";
+import { Trash2, AlertTriangle, CheckCircle, AlertCircle, Plus, ShieldCheck, Building2, UserCheck, Pencil } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { addEmployeePermission, deleteEmployeePermission } from "@/actions/employees";
+import { addEmployeePermission, deleteEmployeePermission, updateEmployeePermission } from "@/actions/employees";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -45,13 +45,33 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [permissionToDelete, setPermissionToDelete] = useState<number | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    // State for editing
+    const [editingId, setEditingId] = useState<number | null>(null);
 
-    // Reset deletedIds when dialog closes or employee changes
+    // Reset state when dialog closes or employee changes
     useEffect(() => {
         if (!open) {
             setDeletedIds(new Set());
+            setEditingId(null);
+            resetForm();
         }
     }, [open, employee?.id]);
+
+    const resetForm = () => {
+        setPermissionType("standard");
+        setName("");
+        setIssueDate("");
+        setExpiryDate("");
+        setNumber("");
+        setCompany("");
+        setIssuer("");
+        setRegistryNumber("");
+        setIsAuthorizer(false);
+        setIsApprover(false);
+        setIsTeamLeader(false);
+        setIsCoordinator(false);
+        setEditingId(null);
+    };
 
     if (!employee) return null;
 
@@ -86,12 +106,11 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                 return;
             }
 
-            await addEmployeePermission(employee.id!, {
+            const permissionData = {
                 name: permissionType === "bp-passport" ? "Paszport BP" : name,
                 issueDate: parsedIssueDate,
                 expiryDate: parsedExpiryDate,
                 number,
-                // BP Passport specific fields
                 company: permissionType === "bp-passport" ? company : undefined,
                 issuer: permissionType === "bp-passport" ? issuer : undefined,
                 registryNumber: permissionType === "bp-passport" ? registryNumber : undefined,
@@ -99,28 +118,39 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                 isApprover: permissionType === "bp-passport" ? isApprover : undefined,
                 isTeamLeader: permissionType === "bp-passport" ? isTeamLeader : undefined,
                 isCoordinator: permissionType === "bp-passport" ? isCoordinator : undefined,
-            });
-            toast.success("Dodano uprawnienie");
-            // Reset all fields
-            setPermissionType("standard");
-            setName("");
-            setIssueDate("");
-            setExpiryDate("");
-            setNumber("");
-            setCompany("");
-            setIssuer("");
-            setRegistryNumber("");
-            setIsAuthorizer(false);
-            setIsApprover(false);
-            setIsTeamLeader(false);
-            setIsCoordinator(false);
+            };
+
+            if (editingId) {
+                await updateEmployeePermission(editingId, permissionData);
+            } else {
+                await addEmployeePermission(employee.id!, permissionData);
+            }
+            toast.success(editingId ? "Zaktualizowano uprawnienie" : "Dodano uprawnienie");
+            resetForm();
         } catch (error) {
-            console.error("Error adding permission:", error);
+            console.error("Error saving permission:", error);
             const errorMessage = error instanceof Error ? error.message : "Nieznany błąd";
-            toast.error(`Błąd podczas dodawania uprawnienia: ${errorMessage}`);
+            toast.error(`Błąd: ${errorMessage}`);
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleEditClick = (p: NonNullable<typeof employee.employeePermissions>[0]) => {
+        const isBP = p.name === "Paszport BP" || p.company;
+        setEditingId(p.id);
+        setPermissionType(isBP ? "bp-passport" : "standard");
+        setName(p.name || "");
+        setIssueDate(p.issueDate ? new Date(p.issueDate).toISOString().split('T')[0] : "");
+        setExpiryDate(p.expiryDate ? new Date(p.expiryDate).toISOString().split('T')[0] : "");
+        setNumber(p.number || "");
+        setCompany(p.company || "");
+        setIssuer(p.issuer || "");
+        setRegistryNumber(p.registryNumber || "");
+        setIsAuthorizer(p.isAuthorizer || false);
+        setIsApprover(p.isApprover || false);
+        setIsTeamLeader(p.isTeamLeader || false);
+        setIsCoordinator(p.isCoordinator || false);
     };
 
     const handleDeleteClick = (id: number) => {
@@ -213,11 +243,20 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                     </DialogHeader>
 
                     <div className="p-6 space-y-6">
-                        {/* Add New Permission Section */}
+                        {/* Add/Edit Permission Section */}
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 pb-2 border-b">
-                                <Plus className="w-4 h-4 text-muted-foreground" />
-                                <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Dodaj nowe uprawnienie</h3>
+                            <div className="flex items-center justify-between pb-2 border-b">
+                                <div className="flex items-center gap-2">
+                                    {editingId ? <Pencil className="w-4 h-4 text-muted-foreground" /> : <Plus className="w-4 h-4 text-muted-foreground" />}
+                                    <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">
+                                        {editingId ? "Edytuj uprawnienie" : "Dodaj nowe uprawnienie"}
+                                    </h3>
+                                </div>
+                                {editingId && (
+                                    <Button variant="ghost" size="sm" onClick={resetForm} className="text-muted-foreground">
+                                        Anuluj edycję
+                                    </Button>
+                                )}
                             </div>
 
                             <form onSubmit={handleAdd} className="space-y-4 bg-muted/20 p-6 rounded-xl border border-dashed border-muted-foreground/30">
@@ -386,10 +425,18 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                                     </div>
                                 )}
 
-                                <div className="flex justify-end pt-4">
-                                    <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto px-8">
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Zatwierdź i Dodaj
+                                <div className="flex justify-end gap-2 pt-4">
+                                    {editingId && (
+                                        <Button type="button" variant="outline" onClick={resetForm} disabled={isSubmitting}>
+                                            Anuluj
+                                        </Button>
+                                    )}
+                                    <Button type="submit" disabled={isSubmitting} className="px-8">
+                                        {editingId ? (
+                                            <><Pencil className="w-4 h-4 mr-2" />Zapisz zmiany</>
+                                        ) : (
+                                            <><Plus className="w-4 h-4 mr-2" />Dodaj</>
+                                        )}
                                     </Button>
                                 </div>
                             </form>
@@ -409,7 +456,7 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                                             <TableHead className="w-[40%]">Nazwa</TableHead>
                                             <TableHead className="w-[25%]">Ważność</TableHead>
                                             <TableHead className="w-[20%]">Status</TableHead>
-                                            <TableHead className="w-[15%] text-right">Usuń</TableHead>
+                                            <TableHead className="w-[15%] text-right">Akcje</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -458,9 +505,14 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                                                         </TableCell>
                                                         <TableCell>{getStatusBadge(p.expiryDate)}</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(p.id)} className="h-7 w-7 text-muted-foreground hover:text-red-500">
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(p)} className="h-7 w-7 text-muted-foreground hover:text-primary">
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(p.id)} className="h-7 w-7 text-muted-foreground hover:text-red-500">
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
                                                         </TableCell>
                                                     </TableRow>
                                                 )
