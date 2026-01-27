@@ -402,91 +402,63 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                                 <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Aktualne certyfikaty i uprawnienia</h3>
                             </div>
 
-                            <div className="rounded-xl border bg-background shadow-sm overflow-x-auto">
-                                <Table>
+                            <div className="rounded-xl border bg-background shadow-sm">
+                                <Table className="w-full table-fixed">
                                     <TableHeader className="bg-muted/30">
                                         <TableRow>
-                                            <TableHead className="w-[30%]">Nazwa</TableHead>
-                                            <TableHead>Numer</TableHead>
-                                            <TableHead>Wystawiono</TableHead>
-                                            <TableHead>Ważność</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            <TableHead className="text-right">Opcje</TableHead>
+                                            <TableHead className="w-[40%]">Nazwa</TableHead>
+                                            <TableHead className="w-[25%]">Ważność</TableHead>
+                                            <TableHead className="w-[20%]">Status</TableHead>
+                                            <TableHead className="w-[15%] text-right">Usuń</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {visiblePermissions.length === 0 ? (
                                             <TableRow>
-                                                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground italic">
-                                                    Brak przypisanych uprawnień dla tego pracownika.
+                                                <TableCell colSpan={4} className="text-center py-8 text-muted-foreground italic">
+                                                    Brak przypisanych uprawnień.
                                                 </TableCell>
                                             </TableRow>
                                         ) : (
                                             visiblePermissions.map((p) => {
                                                 const isBPPassport = p.name === "Paszport BP" || p.company;
                                                 const roles = [];
-                                                if (p.isAuthorizer) roles.push("Poleceniodawca");
-                                                if (p.isApprover) roles.push("Dopuszczający");
-                                                if (p.isTeamLeader) roles.push("Kierujący");
-                                                if (p.isCoordinator) roles.push("Koordynujący");
+                                                if (p.isAuthorizer) roles.push("P");
+                                                if (p.isApprover) roles.push("D");
+                                                if (p.isTeamLeader) roles.push("K");
+                                                if (p.isCoordinator) roles.push("Ko");
 
                                                 return (
-                                                    <TableRow key={p.id} className="hover:bg-muted/10 transition-colors">
-                                                        <TableCell>
-                                                            <div className="space-y-1">
-                                                                <div className="font-semibold text-primary">{p.name}</div>
-                                                                {isBPPassport && (
-                                                                    <>
-                                                                        {p.company && (
-                                                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
-                                                                                <Building2 className="w-3 h-3" />
-                                                                                {p.company}
-                                                                            </div>
-                                                                        )}
-                                                                        {p.issuer && (
-                                                                            <div className="text-xs text-muted-foreground">
-                                                                                Wydał: {p.issuer}
-                                                                            </div>
-                                                                        )}
-                                                                        {roles.length > 0 && (
-                                                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                                                {roles.map((role, idx) => (
-                                                                                    <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0">
-                                                                                        {role}
-                                                                                    </Badge>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        </TableCell>
-                                                        <TableCell className="text-sm font-mono text-muted-foreground">
-                                                            {isBPPassport && p.registryNumber ? (
-                                                                <div>
-                                                                    <div className="font-medium">{p.registryNumber}</div>
-                                                                    <div className="text-[10px] text-muted-foreground">{p.number || "—"}</div>
+                                                    <TableRow key={p.id} className="hover:bg-muted/10">
+                                                        <TableCell className="min-w-0">
+                                                            <div className="truncate font-semibold text-primary text-sm">{p.name}</div>
+                                                            {p.number && <div className="truncate text-xs text-muted-foreground font-mono">{p.number}</div>}
+                                                            {isBPPassport && p.company && (
+                                                                <div className="truncate text-xs text-muted-foreground">{p.company}</div>
+                                                            )}
+                                                            {roles.length > 0 && (
+                                                                <div className="flex gap-0.5 mt-0.5">
+                                                                    {roles.map((role, idx) => (
+                                                                        <Badge key={idx} variant="outline" className="text-[9px] px-1 py-0">{role}</Badge>
+                                                                    ))}
                                                                 </div>
-                                                            ) : (
-                                                                p.number || "—"
                                                             )}
                                                         </TableCell>
-                                                        <TableCell className="text-sm">{format(new Date(p.issueDate), "dd MMM yyyy")}</TableCell>
-                                                        <TableCell className="text-sm">
+                                                        <TableCell className="text-xs min-w-0">
                                                             {p.expiryDate ? (
                                                                 <div>
-                                                                    <div className="font-medium">{format(new Date(p.expiryDate), "dd MMM yyyy")}</div>
-                                                                    <div className="text-[10px] text-muted-foreground">
-                                                                        ({differenceInDays(new Date(p.expiryDate), new Date())} dni ważności)
+                                                                    <div className="font-medium">{format(new Date(p.expiryDate), "dd.MM.yy")}</div>
+                                                                    <div className="text-muted-foreground">
+                                                                        {differenceInDays(new Date(p.expiryDate), new Date())}d
                                                                     </div>
                                                                 </div>
                                                             ) : (
-                                                                <span className="text-muted-foreground uppercase text-[10px] tracking-tighter bg-muted px-1.5 py-0.5 rounded">Bezterminowo</span>
+                                                                <span className="text-muted-foreground">∞</span>
                                                             )}
                                                         </TableCell>
                                                         <TableCell>{getStatusBadge(p.expiryDate)}</TableCell>
                                                         <TableCell className="text-right">
-                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(p.id)} className="h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50">
+                                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(p.id)} className="h-7 w-7 text-muted-foreground hover:text-red-500">
                                                                 <Trash2 className="h-4 w-4" />
                                                             </Button>
                                                         </TableCell>
