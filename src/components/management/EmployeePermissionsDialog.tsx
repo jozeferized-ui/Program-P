@@ -204,7 +204,7 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
             </AlertDialog>
 
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                <DialogContent className="max-w-4xl w-[95vw] max-h-[95vh] flex flex-col p-0 overflow-y-auto">
                     <DialogHeader className="p-6 pb-0">
                         <DialogTitle className="text-2xl font-bold flex items-center gap-2">
                             <ShieldCheck className="w-6 h-6 text-primary" />
@@ -212,7 +212,7 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                         </DialogTitle>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                    <div className="p-6 space-y-6">
                         {/* Add New Permission Section */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b">
@@ -402,7 +402,7 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
                                 <h3 className="font-semibold text-sm uppercase tracking-wider text-muted-foreground">Aktualne certyfikaty i uprawnienia</h3>
                             </div>
 
-                            <div className="rounded-xl border overflow-hidden bg-background shadow-sm">
+                            <div className="rounded-xl border bg-background shadow-sm overflow-x-auto">
                                 <Table>
                                     <TableHeader className="bg-muted/30">
                                         <TableRow>
