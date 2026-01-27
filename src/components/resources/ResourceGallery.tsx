@@ -2,9 +2,9 @@
 
 
 import { AddResourceDialog } from '@/components/resources/AddResourceDialog';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Image as ImageIcon, Link as LinkIcon, ExternalLink, Download, FolderOpen, ChevronRight, Folder } from 'lucide-react';
+import { FileText, Image as ImageIcon, Link as LinkIcon, ExternalLink, Download, FolderOpen, ChevronRight } from 'lucide-react';
 import { useEffect, useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 

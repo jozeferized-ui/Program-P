@@ -172,7 +172,7 @@ export function CalendarView({ initialTasks, initialProjects, initialOrders }: C
 
                     {/* Calendar Grid */}
                     <div className="grid grid-cols-7 flex-1 auto-rows-fr">
-                        {calendarDays.map((day, dayIdx) => {
+                        {calendarDays.map((day, _dayIdx) => {
                             const { tasks: dayTasks, projects: dayProjects, orders: dayOrders } = getEventsForDay(day);
                             const isCurrentMonth = isSameMonth(day, currentDate);
 

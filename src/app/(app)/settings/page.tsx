@@ -1,6 +1,6 @@
 import { getEmployees } from "@/actions/employees";
 import { getTools } from "@/actions/tools";
-import { getCurrentUser, hasPermission } from "@/actions/users";
+import { getCurrentUser } from "@/actions/users";
 import { EmployeesManager } from "@/components/management/EmployeesManager";
 import { ToolsManager } from "@/components/management/ToolsManager";
 import { GeneralSettings } from "@/components/settings/GeneralSettings";

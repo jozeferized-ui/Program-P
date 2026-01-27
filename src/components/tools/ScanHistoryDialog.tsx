@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, Smartphone, Globe, Loader2, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MapPin, Clock, Smartphone, Globe, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 
@@ -30,13 +29,7 @@ export function ScanHistoryDialog({ toolId, toolName, isOpen, onClose }: ScanHis
     const [scans, setScans] = useState<ToolScan[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (isOpen) {
-            loadScans();
-        }
-    }, [isOpen, toolId]);
-
-    const loadScans = async () => {
+    const loadScans = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/scans?toolId=${toolId}`);
@@ -46,7 +39,13 @@ export function ScanHistoryDialog({ toolId, toolName, isOpen, onClose }: ScanHis
             console.error('Failed to load scans:', error);
         }
         setLoading(false);
-    };
+    }, [toolId]);
+
+    useEffect(() => {
+        if (isOpen) {
+            loadScans();
+        }
+    }, [isOpen, loadScans]);
 
     const parseUserAgent = (ua: string | null) => {
         if (!ua) return 'Nieznane urządzenie';

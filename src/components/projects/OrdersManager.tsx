@@ -7,16 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, ShoppingCart, Check, X, Edit2, Link as LinkIcon, FileText, LayoutGrid, List, Download, ArrowDownCircle } from 'lucide-react';
+import { Plus, Trash2, ShoppingCart, Check, Edit2, Link as LinkIcon, FileText, LayoutGrid, List, Download, ArrowDownCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 // ExcelJS jest importowany dynamicznie w funkcji eksportu dla lepszej wydajności
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core';
 import { createOrder, updateOrder, deleteOrder } from '@/actions/orders';
-import { createExpense, updateExpense } from '@/actions/expenses';
+import { createExpense } from '@/actions/expenses';
 import { createCostEstimate } from '@/actions/costEstimates';
-import { createWarehouseItem, updateWarehouseItem, createWarehouseHistory, getWarehouseItems } from '@/actions/warehouse';
+import { createWarehouseItem as _createWarehouseItem, updateWarehouseItem as _updateWarehouseItem, createWarehouseHistory as _createWarehouseHistory, getWarehouseItems as _getWarehouseItems } from '@/actions/warehouse';
 import { createNotification } from '@/actions/notifications';
 
 const UNIT_OPTIONS = ['szt.', 'm².', 'mb.', 'kpl.', 'doba', 'rbh'] as const;

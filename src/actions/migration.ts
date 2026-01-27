@@ -73,13 +73,13 @@ export async function migrateData(data: MigrationData) {
 
             // Employees
             for (const emp of data.employees) {
-                const { id, ...empData } = emp as any;
+                const { id: _id, ...empData } = emp as any;
                 await tx.employee.create({ data: empData });
             }
 
             // Tools (depend on Employees)
             for (const tool of data.tools) {
-                const { id, assignedEmployees, category, ...rest } = tool as any;
+                const { id: _id, assignedEmployees: _assignedEmployees, category: _category, ...rest } = tool as any;
                 const employeeIds = tool.assignedEmployees?.map((e: any) => e.id) || [];
                 await tx.tool.create({
                     data: {
@@ -109,8 +109,8 @@ export async function migrateData(data: MigrationData) {
             for (const p of data.projects) {
                 const project = p as any; // Cast to any to handle potential extra fields from Dexie export
                 const {
-                    supplierIds, employeeIds, parentProjectId,
-                    client, suppliers, employees, subProjects, // Exclude included relations from Dexie
+                    supplierIds: _supplierIds, employeeIds: _employeeIds, parentProjectId: _parentProjectId,
+                    client: _client, suppliers: _suppliers, employees: _employees, subProjects: _subProjects, // Exclude included relations from Dexie
                     ...rest
                 } = project;
 

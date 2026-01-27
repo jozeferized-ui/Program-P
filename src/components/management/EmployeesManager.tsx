@@ -212,7 +212,7 @@ export function EmployeesManager({ initialEmployees }: EmployeesManagerProps) {
                                     };
                                     cell.font = { color: { argb: 'FF006100' } };
                                 }
-                            } catch (e) {
+                            } catch (_e) {
                                 // Fallback
                             }
                         }

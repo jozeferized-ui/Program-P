@@ -1,5 +1,3 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { getProjects } from '@/actions/projects';
 import { getAllTasks } from '@/actions/trash';
 import { getAllOrders } from '@/actions/orders';

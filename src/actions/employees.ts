@@ -30,7 +30,7 @@ export async function getEmployees() {
 
 export async function createEmployee(data: Employee) {
     try {
-        const { id, ...rest } = data;
+        const { id: _id, ...rest } = data;
         const employee = await prisma.employee.create({
             data: {
                 firstName: rest.firstName,

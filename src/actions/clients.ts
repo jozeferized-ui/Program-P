@@ -33,7 +33,7 @@ export async function getClients() {
 
 export async function createClient(data: Client) {
     try {
-        const { id, ...rest } = data;
+        const { id: _id, ...rest } = data;
         const client = await prisma.client.create({
             data: {
                 name: rest.name,

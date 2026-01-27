@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Task, Subtask, Project, ExtendedProject } from '@/types';
+import { Task, Subtask, ExtendedProject } from '@/types';
 import { updateTask, deleteTask } from '@/actions/tasks';
 import { getProject } from '@/actions/projects';
 import {
@@ -54,7 +54,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
         try {
             await updateTask(task.id, { subtasks: updatedSubtasks });
             setNewSubtaskTitle('');
-        } catch (error) {
+        } catch {
             toast.error("Błąd aktualizacji zadania.");
         }
     };
@@ -66,7 +66,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
         );
         try {
             await updateTask(task.id, { subtasks: updatedSubtasks });
-        } catch (error) {
+        } catch {
             toast.error("Błąd aktualizacji zadania.");
         }
     };
@@ -76,7 +76,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
         const updatedSubtasks = task.subtasks?.filter(st => st.id !== subtaskId);
         try {
             await updateTask(task.id, { subtasks: updatedSubtasks });
-        } catch (error) {
+        } catch {
             toast.error("Błąd aktualizacji zadania.");
         }
     };
@@ -87,7 +87,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
             try {
                 await deleteTask(task.id);
                 toast.success("Zadanie usunięte.");
-            } catch (error) {
+            } catch {
                 toast.error("Błąd usuwania zadania.");
             }
         }
@@ -98,7 +98,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
         try {
             await updateTask(task.id, { title: editedTitle });
             setIsEditingTitle(false);
-        } catch (error) {
+        } catch {
             toast.error("Błąd aktualizacji tytułu.");
         }
     };
@@ -115,7 +115,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
         try {
             await updateTask(task.id, { checklist: updatedChecklist });
             setNewChecklistItem('');
-        } catch (error) {
+        } catch {
             toast.error("Błąd aktualizacji listy.");
         }
     };
@@ -127,7 +127,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
         );
         try {
             await updateTask(task.id, { checklist: updatedChecklist });
-        } catch (error) {
+        } catch {
             toast.error("Błąd aktualizacji listy.");
         }
     };
@@ -137,7 +137,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
         const updatedChecklist = task.checklist?.filter(item => item.id !== itemId);
         try {
             await updateTask(task.id, { checklist: updatedChecklist });
-        } catch (error) {
+        } catch {
             toast.error("Błąd aktualizacji listy.");
         }
     };
@@ -211,7 +211,7 @@ export function TaskDetailsDialog({ task, project: initialProject, children }: T
                                         if (task.id) {
                                             try {
                                                 await updateTask(task.id, { dueDate: newDate });
-                                            } catch (error) {
+                                            } catch {
                                                 toast.error("Błąd aktualizacji daty.");
                                             }
                                         }

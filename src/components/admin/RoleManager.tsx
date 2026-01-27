@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, Trash2, Shield, Check, Loader2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -18,16 +18,16 @@ export function RoleManager() {
     const [isAddOpen, setIsAddOpen] = useState(false);
     const [editingRole, setEditingRole] = useState<RoleData | null>(null);
 
-    useEffect(() => {
-        loadRoles();
-    }, []);
-
-    const loadRoles = async () => {
+    const loadRoles = useCallback(async () => {
         setLoading(true);
         const data = await getRoles();
         setRoles(data);
         setLoading(false);
-    };
+    }, []);
+
+    useEffect(() => {
+        loadRoles();
+    }, [loadRoles]);
 
     if (loading) {
         return (

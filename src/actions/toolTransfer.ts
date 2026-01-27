@@ -208,7 +208,7 @@ export async function clearTransfer(toolId: number) {
         cookieStore.delete('tool-transfer-token');
 
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, error: 'Błąd usuwania przekazania' };
     }
 }

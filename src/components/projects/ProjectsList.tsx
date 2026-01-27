@@ -5,7 +5,7 @@ import { Project, Client, Supplier, Employee } from '@/types';
 import { AddProjectDialog } from '@/components/projects/AddProjectDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Calendar, DollarSign, User, FolderTree } from 'lucide-react';
+import { Calendar, DollarSign, User, FolderTree } from 'lucide-react';
 import { format } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { cn } from '@/lib/utils';

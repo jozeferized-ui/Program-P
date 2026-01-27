@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LayoutDashboard, Users, Briefcase, Settings, Calendar, Truck, PieChart, PackageOpen, History, Trash2, FileText, Warehouse, ChevronLeft, ChevronRight, GripVertical, RotateCcw, LogOut, BarChart3 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -14,7 +14,6 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities';
 import { LucideIcon } from 'lucide-react';
 import { logoutUser } from '@/actions/users';
-import { useRouter } from 'next/navigation';
 
 interface SidebarItem {
     id: string;
@@ -137,11 +136,10 @@ export function Sidebar() {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [items, setItems] = useState<SidebarItem[]>(defaultSidebarItems);
-    const [activeId, setActiveId] = useState<string | null>(null);
+    // Use lazy initialization to load saved order from localStorage
+    const [items, setItems] = useState<SidebarItem[]>(() => {
+        if (typeof window === 'undefined') return defaultSidebarItems;
 
-    // Load saved order from localStorage
-    useEffect(() => {
         const savedOrder = localStorage.getItem(SIDEBAR_ORDER_KEY);
         if (savedOrder) {
             try {
@@ -157,12 +155,14 @@ export function Sidebar() {
                     }
                 });
 
-                setItems(orderedItems);
+                return orderedItems;
             } catch {
-                setItems(defaultSidebarItems);
+                return defaultSidebarItems;
             }
         }
-    }, []);
+        return defaultSidebarItems;
+    });
+    const [activeId, setActiveId] = useState<string | null>(null);
 
     // Save order to localStorage
     const saveOrder = (newItems: SidebarItem[]) => {

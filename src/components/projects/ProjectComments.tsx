@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { MessageCircle, Send, Trash2, Loader2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,16 +19,16 @@ export function ProjectComments({ projectId }: ProjectCommentsProps) {
     const [newComment, setNewComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        loadComments();
-    }, [projectId]);
-
-    const loadComments = async () => {
+    const loadComments = useCallback(async () => {
         setLoading(true);
         const data = await getProjectComments(projectId);
         setComments(data);
         setLoading(false);
-    };
+    }, [projectId]);
+
+    useEffect(() => {
+        loadComments();
+    }, [loadComments]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

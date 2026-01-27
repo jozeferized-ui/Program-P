@@ -55,9 +55,6 @@ export default function FinancesClient({ data }: FinancesClientProps) {
     const formatCurrency = (value: number) =>
         value.toLocaleString('pl-PL', { style: 'currency', currency: 'PLN' });
 
-    const formatShortCurrency = (value: number) =>
-        `${(value / 1000).toFixed(0)}k PLN`;
-
     const revenueData = [
         { name: 'Zakończone', value: data.revenue.completed },
         { name: 'W Trakcie', value: data.revenue.active },

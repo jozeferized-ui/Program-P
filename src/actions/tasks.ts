@@ -56,7 +56,7 @@ export async function getTasks(projectId: number) {
 
 export async function createTask(data: Task) {
     try {
-        const { id, checklist, subtasks, ...rest } = data;
+        const { id: _id, checklist, subtasks, ...rest } = data;
         const task = await prisma.task.create({
             data: {
                 projectId: rest.projectId,
@@ -80,7 +80,7 @@ export async function createTask(data: Task) {
 
 export async function updateTask(id: number, data: Partial<Task>) {
     try {
-        const { checklist, subtasks, id: _, ...rest } = data;
+        const { checklist, subtasks, id: _unused, ...rest } = data;
 
         const task = await prisma.task.update({
             where: { id },

@@ -25,7 +25,7 @@ export default async function ProtocolDetailPage({
         console.error("Failed to parse protocol content:", e);
         protocolData = { general: {}, disassembly: {}, protection: {}, place: 'Błąd danych' };
     }
-    const result = protocol.result as 'POZYTYWNA' | 'NEGATYWNA';
+    const _result = protocol.result as 'POZYTYWNA' | 'NEGATYWNA';
 
     return (
         <div className="min-h-screen overflow-y-auto touch-pan-y bg-slate-100 font-sans antialiased text-slate-900 flex flex-col items-center">

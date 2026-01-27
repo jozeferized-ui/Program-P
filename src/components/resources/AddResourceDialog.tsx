@@ -33,7 +33,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Plus, Upload } from 'lucide-react';
+import { Plus } from 'lucide-react';
 
 const formSchema = z.object({
     name: z.string().min(2, {

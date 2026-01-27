@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { Employee, EmployeePermission } from "@/types";
+import { Employee } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,7 +113,7 @@ export function EmployeePermissionsDialog({ open, onOpenChange, employee }: Empl
         try {
             await deleteEmployeePermission(id);
             toast.success("Usunięto uprawnienie");
-        } catch (error) {
+        } catch (_error) {
             toast.error("Błąd podczas usuwania");
         }
     };

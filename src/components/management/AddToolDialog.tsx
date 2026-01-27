@@ -115,6 +115,7 @@ export function AddToolDialog({ open, onOpenChange, onSubmit, initialData, emplo
             });
             setInspectionInterval("6");
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- form.reset() would cause infinite loop if form added to deps
     }, [initialData, open]);
 
     const handleSubmit = (values: FormValues) => {

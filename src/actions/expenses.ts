@@ -32,7 +32,7 @@ export async function getExpenses(projectId: number) {
 
 export async function createExpense(data: Expense) {
     try {
-        const { id, ...rest } = data;
+        const { id: _id, ...rest } = data;
         const expense = await prisma.expense.create({
             data: {
                 projectId: rest.projectId,
@@ -56,7 +56,7 @@ export async function createExpense(data: Expense) {
 
 export async function updateExpense(id: number, data: Partial<Expense>) {
     try {
-        const { id: _, ...rest } = data;
+        const { id: _unused, ...rest } = data;
         const expense = await prisma.expense.update({
             where: { id },
             data: rest,

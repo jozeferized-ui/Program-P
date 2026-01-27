@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { UserPlus, Edit2, KeyRound, Check, X, Loader2, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -20,17 +20,17 @@ export function UserManager() {
     const [editingUser, setEditingUser] = useState<UserData | null>(null);
     const [resetPasswordUser, setResetPasswordUser] = useState<UserData | null>(null);
 
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadData = useCallback(async () => {
         setLoading(true);
         const [usersData, rolesData] = await Promise.all([getUsers(), getRoles()]);
         setUsers(usersData);
         setRoles(rolesData);
         setLoading(false);
-    };
+    }, []);
+
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
 
     const handleAddUser = async (formData: FormData) => {
         const result = await createUser({

@@ -21,7 +21,7 @@ export async function getCostEstimates(projectId: number) {
 
 export async function createCostEstimate(data: CostEstimateItem) {
     try {
-        const { id, ...rest } = data;
+        const { id: _id, ...rest } = data;
         const item = await prisma.costEstimateItem.create({
             data: {
                 projectId: rest.projectId,
@@ -43,7 +43,7 @@ export async function createCostEstimate(data: CostEstimateItem) {
 
 export async function updateCostEstimate(id: number, data: Partial<CostEstimateItem>) {
     try {
-        const { id: _, ...rest } = data;
+        const { id: _unused, ...rest } = data;
         const item = await prisma.costEstimateItem.update({
             where: { id },
             data: rest,

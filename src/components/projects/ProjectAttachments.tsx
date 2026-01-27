@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Paperclip, Upload, Trash2, Loader2, Download, FileText, Image, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -18,16 +18,16 @@ export function ProjectAttachments({ projectId }: ProjectAttachmentsProps) {
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    useEffect(() => {
-        loadAttachments();
-    }, [projectId]);
-
-    const loadAttachments = async () => {
+    const loadAttachments = useCallback(async () => {
         setLoading(true);
         const data = await getProjectAttachments(projectId);
         setAttachments(data);
         setLoading(false);
-    };
+    }, [projectId]);
+
+    useEffect(() => {
+        loadAttachments();
+    }, [loadAttachments]);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -64,7 +64,7 @@ export function ProjectAttachments({ projectId }: ProjectAttachmentsProps) {
                 setUploading(false);
             };
             reader.readAsDataURL(file);
-        } catch (error) {
+        } catch (_error) {
             toast.error('Błąd przesyłania pliku');
             setUploading(false);
         }
@@ -92,6 +92,7 @@ export function ProjectAttachments({ projectId }: ProjectAttachmentsProps) {
     };
 
     const getFileIcon = (fileType: string) => {
+        // eslint-disable-next-line jsx-a11y/alt-text -- This is lucide-react Image icon, not HTML img
         if (fileType.startsWith('image/')) return <Image className="w-5 h-5 text-green-500" />;
         if (fileType.includes('pdf')) return <FileText className="w-5 h-5 text-red-500" />;
         return <File className="w-5 h-5 text-blue-500" />;

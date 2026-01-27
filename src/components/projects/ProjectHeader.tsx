@@ -66,7 +66,7 @@ export function ProjectHeader({ project, client, suppliers, parentProject }: Pro
             await updateProject(project.id, { status });
             toast.success(`Status zmieniony na: ${status}`);
             router.refresh();  // Odśwież UI
-        } catch (error) {
+        } catch {
             toast.error("Błąd zmiany statusu.");
         }
     };
@@ -81,7 +81,7 @@ export function ProjectHeader({ project, client, suppliers, parentProject }: Pro
             await updateProject(project.id, updates);
             toast.success(`Status oferty zmieniony na: ${quoteStatus}`);
             router.refresh();  // Odśwież UI
-        } catch (error) {
+        } catch {
             toast.error("Błąd zmiany statusu oferty.");
         }
     };

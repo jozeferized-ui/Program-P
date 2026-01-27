@@ -8,7 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tool, Employee, ProtocolData } from "@/types";
 import { format, addMonths } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ToolProtocolDialogProps {
     open: boolean;
@@ -20,6 +19,38 @@ interface ToolProtocolDialogProps {
 }
 
 const DEFAULT_RESULT = "POZYTYWNY";
+
+// Moved outside of ToolProtocolDialog to avoid creating components during render
+const CheckItem = ({
+    label,
+    value,
+    onChange,
+    prefix
+}: {
+    label: string,
+    value: string,
+    onChange: (val: string) => void,
+    prefix: string
+}) => (
+    <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors gap-4">
+        <div className="flex items-start gap-3 flex-1">
+            <span className="font-bold text-muted-foreground min-w-[24px]">{prefix}</span>
+            <span className="text-sm font-medium leading-tight">{label}</span>
+        </div>
+        <div className="w-[150px] shrink-0">
+            <Select value={value} onValueChange={onChange}>
+                <SelectTrigger className={value === "NEGATYWNY" ? "border-red-500 bg-red-50 text-red-700" : (value === "POZYTYWNY" ? "border-green-500 bg-green-50 text-green-700" : "")}>
+                    <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="POZYTYWNY" className="text-green-700 font-medium">POZYTYWNY</SelectItem>
+                    <SelectItem value="NEGATYWNY" className="text-red-700 font-medium">NEGATYWNY</SelectItem>
+                    <SelectItem value="N/A" className="text-muted-foreground">N/A</SelectItem>
+                </SelectContent>
+            </Select>
+        </div>
+    </div>
+);
 
 export function ToolProtocolDialog({ open, onOpenChange, tool, inspector, onSubmit, initialProtocolData }: ToolProtocolDialogProps) {
     const [formData, setFormData] = useState<ProtocolData>({
@@ -81,6 +112,7 @@ export function ToolProtocolDialog({ open, onOpenChange, tool, inspector, onSubm
         if (formData.result !== newResult) {
             setFormData(prev => ({ ...prev, result: newResult }));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- formData.result check prevents infinite loop
     }, [formData.general, formData.disassembly, formData.protection]);
 
 
@@ -100,37 +132,6 @@ export function ToolProtocolDialog({ open, onOpenChange, tool, inspector, onSubm
         onSubmit(formData);
         onOpenChange(false);
     };
-
-    const CheckItem = ({
-        label,
-        value,
-        onChange,
-        prefix
-    }: {
-        label: string,
-        value: string,
-        onChange: (val: string) => void,
-        prefix: string
-    }) => (
-        <div className="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors gap-4">
-            <div className="flex items-start gap-3 flex-1">
-                <span className="font-bold text-muted-foreground min-w-[24px]">{prefix}</span>
-                <span className="text-sm font-medium leading-tight">{label}</span>
-            </div>
-            <div className="w-[150px] shrink-0">
-                <Select value={value} onValueChange={onChange}>
-                    <SelectTrigger className={value === "NEGATYWNY" ? "border-red-500 bg-red-50 text-red-700" : (value === "POZYTYWNY" ? "border-green-500 bg-green-50 text-green-700" : "")}>
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="POZYTYWNY" className="text-green-700 font-medium">POZYTYWNY</SelectItem>
-                        <SelectItem value="NEGATYWNY" className="text-red-700 font-medium">NEGATYWNY</SelectItem>
-                        <SelectItem value="N/A" className="text-muted-foreground">N/A</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
-        </div>
-    );
 
     if (!tool) return null;
 

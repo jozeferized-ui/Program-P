@@ -1,7 +1,7 @@
 'use client';
 
 import { Project } from '@/types';
-import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday } from 'date-fns';
+import { format, differenceInDays, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isToday } from 'date-fns';
 import { pl } from 'date-fns/locale';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';

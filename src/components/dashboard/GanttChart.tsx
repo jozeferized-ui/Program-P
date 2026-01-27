@@ -28,7 +28,7 @@ interface GanttChartProps {
     viewMode?: 'month' | 'quarter';
 }
 
-export function GanttChart({ projects = [], tasks = [], viewMode = 'month' }: GanttChartProps) {
+export function GanttChart({ projects = [], tasks = [], viewMode: _viewMode = 'month' }: GanttChartProps) {
     // Calculate date range
     const dateRange = useMemo(() => {
         const allDates: Date[] = [];
@@ -116,21 +116,13 @@ export function GanttChart({ projects = [], tasks = [], viewMode = 'month' }: Ga
         })),
     ];
 
-    if (items.length === 0) {
-        return (
-            <div className="text-center py-12 text-muted-foreground">
-                Brak danych do wyświetlenia. Dodaj projekty lub zadania z datami.
-            </div>
-        );
-    }
-
     // Group days by month for header
     const months = useMemo(() => {
         const result: { month: string; days: number }[] = [];
         let currentMonth = '';
         let currentCount = 0;
 
-        days.forEach((day, i) => {
+        days.forEach((day) => {
             const monthName = format(day, 'MMM yyyy', { locale: pl });
             if (monthName !== currentMonth) {
                 if (currentMonth) {
@@ -148,6 +140,14 @@ export function GanttChart({ projects = [], tasks = [], viewMode = 'month' }: Ga
 
         return result;
     }, [days]);
+
+    if (items.length === 0) {
+        return (
+            <div className="text-center py-12 text-muted-foreground">
+                Brak danych do wyświetlenia. Dodaj projekty lub zadania z datami.
+            </div>
+        );
+    }
 
     return (
         <div className="overflow-x-auto">

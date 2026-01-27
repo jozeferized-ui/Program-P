@@ -23,7 +23,7 @@ interface Employee {
     lastName: string;
 }
 
-export function TransferSection({ toolId, currentAssignee, currentTransferredTo }: TransferSectionProps) {
+export function TransferSection({ toolId, currentTransferredTo }: TransferSectionProps) {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [user, setUser] = useState<{ firstName: string; lastName: string } | null>(null);
     const [email, setEmail] = useState('');

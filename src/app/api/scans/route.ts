@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
         const userAgent = request.headers.get('user-agent') || 'unknown';
 
         // Try to get location from IP (simple approach - could use external service)
-        let country: string | null = null;
-        let city: string | null = null;
+        const country: string | null = null;
+        const city: string | null = null;
 
         // Create scan record
         const scan = await prisma.toolScan.create({

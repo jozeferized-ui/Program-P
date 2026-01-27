@@ -30,7 +30,7 @@ export function InspectionSticker({
     // Colors - green theme
     const primaryColor = '#059669'; // emerald-600
     const darkColor = '#064e3b'; // emerald-900
-    const lightColor = '#d1fae5'; // emerald-100
+    const _lightColor = '#d1fae5'; // emerald-100
     const white = '#ffffff';
 
     // Years to display (25, 26, 27)
@@ -58,14 +58,14 @@ export function InspectionSticker({
     });
 
     // Highlight current inspection date
-    const getMonthHighlight = (month: number) => {
+    const _getMonthHighlight = (month: number) => {
         if (month === inspectionMonth) {
             return darkColor;
         }
         return 'none';
     };
 
-    const getYearHighlight = (year: number) => {
+    const _getYearHighlight = (year: number) => {
         const shortYear = inspectionYear % 100;
         if (year === shortYear) {
             return darkColor;
@@ -259,7 +259,7 @@ export function StickerSheet({ tools, stickerSize = 30, format = 'A4' }: Sticker
 
     const cols = Math.floor((pageWidth - 2 * margin) / stickerSize);
     const rows = Math.floor((pageHeight - 2 * margin) / stickerSize);
-    const stickersPerPage = cols * rows;
+    const _stickersPerPage = cols * rows;
 
     // Convert mm to px (assuming 96 DPI, 1mm = 3.78px)
     const pxPerMm = 3.78;

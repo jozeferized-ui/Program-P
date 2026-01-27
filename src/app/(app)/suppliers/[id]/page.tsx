@@ -1,4 +1,4 @@
-import { getSupplierById, getSupplierCategories, deleteSupplier } from '@/actions/suppliers';
+import { getSupplierById, getSupplierCategories } from '@/actions/suppliers';
 import { getAllOrders } from '@/actions/orders';
 import { getProjects } from '@/actions/projects';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

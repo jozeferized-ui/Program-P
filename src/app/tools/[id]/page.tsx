@@ -22,10 +22,12 @@ export default async function ToolInfoPage({ params }: { params: Promise<{ id: s
         notFound();
     }
 
-    const isExpired = tool.inspectionExpiryDate && new Date(tool.inspectionExpiryDate) < new Date();
+    const now = new Date();
+    const fourteenDaysFromNow = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const isExpired = tool.inspectionExpiryDate && new Date(tool.inspectionExpiryDate) < now;
     const isSoonExpired = tool.inspectionExpiryDate &&
-        new Date(tool.inspectionExpiryDate) > new Date() &&
-        new Date(tool.inspectionExpiryDate) < new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        new Date(tool.inspectionExpiryDate) > now &&
+        new Date(tool.inspectionExpiryDate) < fourteenDaysFromNow;
 
     const currentAssignee = tool.assignedEmployees.length > 0
         ? tool.assignedEmployees.map((e: any) => `${e.firstName} ${e.lastName}`).join(', ')

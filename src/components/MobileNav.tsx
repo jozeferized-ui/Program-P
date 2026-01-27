@@ -9,7 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     LayoutDashboard, Users, Briefcase, Settings, Calendar, Truck,
     PieChart, PackageOpen, History, Trash2, FileText, Warehouse,
-    Menu, X
+    Menu
 } from 'lucide-react';
 import { ModeToggle } from '@/components/mode-toggle';
 import { NotificationBell } from '@/components/NotificationBell';

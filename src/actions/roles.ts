@@ -1,7 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
-import { ALL_PERMISSIONS, DEFAULT_ROLES } from '@/lib/permissions';
+import { DEFAULT_ROLES } from '@/lib/permissions';
 
 export interface RoleData {
     id: number;

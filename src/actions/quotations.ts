@@ -25,7 +25,7 @@ export async function getQuotationItems(projectId: number) {
 
 export async function createQuotationItem(data: QuotationItem) {
     try {
-        const { id, ...rest } = data;
+        const { id: _id, ...rest } = data;
         const item = await prisma.quotationItem.create({
             data: {
                 projectId: rest.projectId,
@@ -49,7 +49,7 @@ export async function createQuotationItem(data: QuotationItem) {
 
 export async function updateQuotationItem(id: number, data: Partial<QuotationItem>) {
     try {
-        const { id: _, ...rest } = data;
+        const { id: _unused, ...rest } = data;
         const item = await prisma.quotationItem.update({
             where: { id },
             data: rest,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Tool, Employee } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -25,7 +25,7 @@ function getInitials(employees: Array<{ firstName: string; lastName: string }> |
     return ((emp.firstName?.[0] || '') + (emp.lastName?.[0] || '')).toUpperCase() || '--';
 }
 
-export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = [], allEmployees = [] }: BulkPrintDialogProps) {
+export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = [], allEmployees: _allEmployees = [] }: BulkPrintDialogProps) {
     const [employeeFilter, setEmployeeFilter] = useState<string>('selected');
     const [showQr, setShowQr] = useState(true);
     const [showSticker, setShowSticker] = useState(true);
@@ -123,7 +123,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
 
                         qrDataUrls.set(tool.id, canvas.toDataURL('image/png'));
                     }
-                } catch (e) {
+                } catch (_e) {
                     // Error handling without console.log
                 }
             }
@@ -144,14 +144,14 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
             filteredTools.forEach(tool => {
                 const lastInsp = tool.lastInspectionDate ? new Date(tool.lastInspectionDate) : null;
                 const expiry = tool.inspectionExpiryDate ? new Date(tool.inspectionExpiryDate) : null;
-                const initials = getInitials(tool.assignedEmployees);
-                const toolNumber = String(tool.id || 0).padStart(4, '0');
+                const _initials = getInitials(tool.assignedEmployees);
+                const _toolNumber = String(tool.id || 0).padStart(4, '0');
                 const qrDataUrl = qrDataUrls.get(tool.id!) || '';
 
                 // Format dates
                 const lastInspStr = lastInsp ? lastInsp.toLocaleDateString('pl-PL') : '-';
                 const expiryStr = expiry ? expiry.toLocaleDateString('pl-PL') : '-';
-                const deviceName = (tool.name || '-').substring(0, 25);
+                const _deviceName = (tool.name || '-').substring(0, 25);
                 const serialNum = (tool.serialNumber || '-').substring(0, 18);
 
                 // Sticker name priority: Model > Brand > Name
@@ -244,7 +244,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
         if (printProtocols) {
             filteredTools.forEach(tool => {
                 const protocols = (tool as any).protocols || [];
-                const toolUrl = `${origin}/tools/${tool.id}`;
+                const _toolUrl = `${origin}/tools/${tool.id}`;
                 const initials = getInitials(tool.assignedEmployees);
                 const toolNumber = String(tool.id || 0).padStart(4, '0');
 
@@ -255,7 +255,7 @@ export function BulkPrintDialog({ open, onOpenChange, selectedTools, allTools = 
                         if (protocol.content && protocol.content.startsWith('{')) {
                             protocolData = JSON.parse(protocol.content);
                         }
-                    } catch (e) {
+                    } catch (_e) {
                         protocolData = {};
                     }
 

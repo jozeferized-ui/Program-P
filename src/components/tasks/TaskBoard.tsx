@@ -126,7 +126,7 @@ export function TaskBoard({ projectId, initialTasks, initialOrders, project, ord
                 setTasks(prev => prev.map(t => t.id === itemId ? { ...t, status: newStatus! } : t));
                 try {
                     await updateTask(itemId, { status: newStatus });
-                } catch (error) {
+                } catch {
                     toast.error("Błąd aktualizacji zadania.");
                     // Revert optimistic update
                     setTasks(prev => prev.map(t => t.id === itemId ? { ...t, status: task.status } : t));
@@ -143,7 +143,7 @@ export function TaskBoard({ projectId, initialTasks, initialOrders, project, ord
                 setOrders(prev => prev.map(o => o.id === itemId ? { ...o, status: orderStatus } : o));
                 try {
                     await updateOrder(itemId, { status: orderStatus });
-                } catch (error) {
+                } catch {
                     toast.error("Błąd aktualizacji zamówienia.");
                     // Revert optimistic update
                     setOrders(prev => prev.map(o => o.id === itemId ? { ...o, status: order.status } : o));

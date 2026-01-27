@@ -1,6 +1,3 @@
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getProjects } from '@/actions/projects';
 import { getAllTasks } from '@/actions/trash';
 import { DocumentsView } from '@/components/documents/DocumentsView';

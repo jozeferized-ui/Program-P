@@ -1,17 +1,27 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
 export function OfflineIndicator() {
-    const [isOnline, setIsOnline] = useState(true);
+    // Use lazy initialization to get initial online state
+    const [isOnline, setIsOnline] = useState(() =>
+        typeof window !== 'undefined' ? navigator.onLine : true
+    );
     const [showBanner, setShowBanner] = useState(false);
+    const isFirstRender = useRef(true);
 
     useEffect(() => {
-        // Set initial state
-        setIsOnline(navigator.onLine);
+        // Skip setting state on first render since we already have the correct initial value
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            // Only check if server-rendered value differs from client
+            if (typeof window !== 'undefined' && navigator.onLine !== isOnline) {
+                setIsOnline(navigator.onLine);
+            }
+        }
 
         const handleOnline = () => {
             setIsOnline(true);
@@ -42,15 +52,15 @@ export function OfflineIndicator() {
             window.removeEventListener('online', handleOnline);
             window.removeEventListener('offline', handleOffline);
         };
-    }, []);
+    }, [isOnline]);
 
     if (isOnline && !showBanner) return null;
 
     return (
         <div
             className={`fixed bottom-4 right-4 z-50 flex items-center gap-3 px-4 py-2 rounded-lg shadow-lg transition-all ${isOnline
-                    ? 'bg-green-500 text-white'
-                    : 'bg-amber-500 text-white animate-pulse'
+                ? 'bg-green-500 text-white'
+                : 'bg-amber-500 text-white animate-pulse'
                 }`}
         >
             {isOnline ? (

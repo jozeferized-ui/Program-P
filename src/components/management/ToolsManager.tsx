@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Pencil, Trash2, Calendar, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode, MapPin } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode, MapPin } from "lucide-react";
 import { AddToolDialog } from "./AddToolDialog";
 import { toast } from "sonner";
 import { ScanHistoryDialog } from "@/components/tools/ScanHistoryDialog";

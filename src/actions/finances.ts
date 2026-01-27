@@ -60,7 +60,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
-        const orders = await prisma.order.findMany({
+        const _orders = await prisma.order.findMany({
             where: {
                 isDeleted: 0,
                 date: {

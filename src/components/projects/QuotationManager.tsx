@@ -51,7 +51,7 @@ export function QuotationManager({ projectId, items, project }: QuotationManager
         section: ''
     });
 
-    const [renamingSection, setRenamingSection] = useState<string | null>(null);
+    const [_renamingSection, setRenamingSection] = useState<string | null>(null);
     const [newSectionName, setNewSectionName] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [quotationTitle, setQuotationTitle] = useState('');
@@ -68,7 +68,7 @@ export function QuotationManager({ projectId, items, project }: QuotationManager
             try {
                 await updateProject(projectId, { quotationTitle });
                 toast.success("Tytuł oferty zaktualizowany.");
-            } catch (error) {
+            } catch (_error) {
                 toast.error("Błąd aktualizacji tytułu oferty.");
             }
         }
@@ -270,7 +270,7 @@ export function QuotationManager({ projectId, items, project }: QuotationManager
     // Get unique existing sections for suggestions
     const existingSections = useMemo(() => Array.from(new Set(items?.map(i => i.section).filter(Boolean))), [items]);
 
-    const handleRenameSection = async (oldName: string) => {
+    const _handleRenameSection = async (oldName: string) => {
         if (!newSectionName.trim() || newSectionName === oldName) {
             setRenamingSection(null);
             return;

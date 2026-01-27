@@ -34,7 +34,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { createProject } from '@/actions/projects';
 import { Client, Supplier, Employee, Project } from '@/types';
@@ -124,7 +123,7 @@ interface AddProjectDialogProps {
     projects: Project[];
 }
 
-export function AddProjectDialog({ defaultParentId, defaultParentName, clients, suppliers, employees, projects }: AddProjectDialogProps) {
+export function AddProjectDialog({ defaultParentId, defaultParentName, clients, suppliers: _suppliers, employees, projects }: AddProjectDialogProps) {
     const [open, setOpen] = useState(false);
 
     const form = useForm<z.infer<typeof formSchema>>({
@@ -306,8 +305,8 @@ export function AddProjectDialog({ defaultParentId, defaultParentName, clients, 
                                             type="button"
                                             onClick={() => field.onChange(color)}
                                             className={`w-6 h-6 rounded-full border-2 transition-all ${field.value === color
-                                                    ? 'ring-2 ring-offset-1 ring-primary scale-110'
-                                                    : 'hover:scale-105'
+                                                ? 'ring-2 ring-offset-1 ring-primary scale-110'
+                                                : 'hover:scale-105'
                                                 } ${!color ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
                                             style={color ? { backgroundColor: color } : undefined}
                                             title={color ? color : 'Brak znacznika'}

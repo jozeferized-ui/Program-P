@@ -60,7 +60,7 @@ export async function getSupplierById(id: number) {
 
 export async function createSupplier(data: Supplier) {
     try {
-        const { id, ...rest } = data;
+        const { id: _id, ...rest } = data;
         const supplier = await prisma.supplier.create({
             data: {
                 name: rest.name,

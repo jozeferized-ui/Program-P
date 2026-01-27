@@ -178,7 +178,7 @@ export async function getProject(id: number) {
 
 export async function createProject(data: Project) {
     try {
-        const { id, supplierIds, employeeIds, ...rest } = data;
+        const { id: _id, supplierIds, employeeIds, ...rest } = data;
 
         const project = await prisma.project.create({
             data: {
