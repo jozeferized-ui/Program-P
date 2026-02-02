@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Pencil, Trash2, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode, MapPin, ArrowUpDown, ArrowLeftRight, Settings2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode, MapPin, ArrowUpDown, ArrowLeftRight, Settings2, MoreHorizontal } from "lucide-react";
 import { AddToolDialog } from "./AddToolDialog";
 import { toast } from "sonner";
 import { ScanHistoryDialog } from "@/components/tools/ScanHistoryDialog";
@@ -25,7 +25,7 @@ import { BulkPrintDialog } from "./BulkPrintDialog";
 import { saveProtocol } from "@/actions/protocols";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
@@ -597,13 +597,13 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                 <CardHeader>
                     <CardTitle>Lista narzędzi</CardTitle>
                 </CardHeader>
-                <CardContent className="overflow-x-auto">
+                <CardContent className="p-0 overflow-hidden">
                     <TooltipProvider>
-                        <Table className="table-fixed w-full">
+                        <Table className="w-full">
                             <TableHeader className="sticky top-0 z-10 bg-background">
                                 <TableRow>
                                     {/* Checkbox - always visible */}
-                                    <TableHead className="w-10">
+                                    <TableHead className="w-8 px-2">
                                         <input
                                             type="checkbox"
                                             checked={selectedToolIds.size === filteredTools.length && filteredTools.length > 0}
@@ -612,31 +612,31 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                         />
                                     </TableHead>
                                     {/* Lp - always visible */}
-                                    <TableHead className="w-12">Lp.</TableHead>
-                                    {/* Narzędzie - always visible */}
-                                    <TableHead className="min-w-[180px]">Narzędzie</TableHead>
+                                    <TableHead className="w-10 px-1">Lp.</TableHead>
+                                    {/* Narzędzie - always visible, flexible */}
+                                    <TableHead>Narzędzie</TableHead>
                                     {/* Nr seryjny */}
-                                    {visibleColumns.has('serial') && <TableHead className="w-[140px]">Nr seryjny</TableHead>}
+                                    {visibleColumns.has('serial') && <TableHead className="w-28">Nr seryjny</TableHead>}
                                     {/* Status */}
-                                    {visibleColumns.has('status') && <TableHead className="w-[100px]">Status</TableHead>}
+                                    {visibleColumns.has('status') && <TableHead className="w-20">Status</TableHead>}
                                     {/* Przegląd */}
                                     {visibleColumns.has('inspection') && (
-                                        <TableHead className="w-[160px] cursor-pointer hover:bg-muted/50" onClick={() => handleSort('inspectionExpiryDate')}>
-                                            Przegląd <ArrowUpDown className="ml-1 h-3 w-3 inline" />
+                                        <TableHead className="w-28 cursor-pointer hover:bg-muted/50" onClick={() => handleSort('inspectionExpiryDate')}>
+                                            Przegląd <ArrowUpDown className="h-3 w-3 inline" />
                                         </TableHead>
                                     )}
                                     {/* Przypisane */}
                                     {visibleColumns.has('assigned') && (
-                                        <TableHead className="w-[150px] cursor-pointer hover:bg-muted/50" onClick={() => handleSort('assignedEmployees')}>
-                                            Przypisane <ArrowUpDown className="ml-1 h-3 w-3 inline" />
+                                        <TableHead className="w-32 cursor-pointer hover:bg-muted/50" onClick={() => handleSort('assignedEmployees')}>
+                                            Przypisane <ArrowUpDown className="h-3 w-3 inline" />
                                         </TableHead>
                                     )}
                                     {/* Przekazano */}
-                                    {visibleColumns.has('transferred') && <TableHead className="w-[140px]">Przekazano</TableHead>}
+                                    {visibleColumns.has('transferred') && <TableHead className="w-28">Przekazano</TableHead>}
                                     {/* Nr Protokołu */}
-                                    {visibleColumns.has('protocol') && <TableHead className="w-[100px]">Nr Protokołu</TableHead>}
+                                    {visibleColumns.has('protocol') && <TableHead className="w-20">Protokół</TableHead>}
                                     {/* Akcje - always visible */}
-                                    <TableHead className="text-right w-[220px]">Akcje</TableHead>
+                                    <TableHead className="text-right w-32">Akcje</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -745,46 +745,61 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                                                 </TableCell>
                                             )}
                                             {/* Akcje */}
-                                            <TableCell className="text-right">
-                                                <div className="flex justify-end gap-1">
-                                                    {/* Quick Transfer Button */}
+                                            <TableCell className="text-right px-2">
+                                                <div className="flex justify-end items-center gap-0.5">
+                                                    {/* Przekaz - primary action */}
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
-                                                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                                                className="h-7 w-7 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                                                 onClick={() => setTransferDrawerTool(tool)}
                                                             >
-                                                                <ArrowLeftRight className="h-4 w-4" />
+                                                                <ArrowLeftRight className="h-3.5 w-3.5" />
                                                             </Button>
                                                         </TooltipTrigger>
-                                                        <TooltipContent>Przekaż narzędzie</TooltipContent>
+                                                        <TooltipContent>Przekaz</TooltipContent>
                                                     </Tooltip>
-                                                    <Button variant="ghost" size="icon" title="Drukuj" onClick={() => handlePrintChecklist(tool)}>
-                                                        <FileText className="h-4 w-4" />
+                                                    {/* Edytuj */}
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditClick(tool)}>
+                                                        <Pencil className="h-3.5 w-3.5" />
                                                     </Button>
-                                                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => {
-                                                        setSelectedToolForProtocol(tool);
-                                                        setIsHistoryDialogOpen(true);
-                                                    }}>
-                                                        Historia
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => tool.id && handleOpenProtocolDialog(tool)}>
-                                                        <FileText className="h-4 w-4 text-blue-600" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleOpenQr(tool)} title="QR">
-                                                        <QrCode className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => setScanHistoryTool(tool)} title="Skany">
-                                                        <MapPin className="h-4 w-4 text-emerald-600" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(tool)}>
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => tool.id && confirmDelete(tool.id)}>
-                                                        <Trash2 className="h-4 w-4 text-red-500" />
-                                                    </Button>
+                                                    {/* More dropdown */}
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                                                                <MoreHorizontal className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-40">
+                                                            <DropdownMenuItem onClick={() => handlePrintChecklist(tool)}>
+                                                                <FileText className="h-4 w-4 mr-2" /> Drukuj
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => {
+                                                                setSelectedToolForProtocol(tool);
+                                                                setIsHistoryDialogOpen(true);
+                                                            }}>
+                                                                <FileText className="h-4 w-4 mr-2" /> Historia
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => tool.id && handleOpenProtocolDialog(tool)}>
+                                                                <FileText className="h-4 w-4 mr-2 text-blue-600" /> Protokół
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleOpenQr(tool)}>
+                                                                <QrCode className="h-4 w-4 mr-2" /> Kod QR
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => setScanHistoryTool(tool)}>
+                                                                <MapPin className="h-4 w-4 mr-2 text-emerald-600" /> Skany
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-red-600"
+                                                                onClick={() => tool.id && confirmDelete(tool.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" /> Usuń
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                             </TableCell>
                                         </TableRow>
