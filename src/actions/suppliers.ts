@@ -1,22 +1,38 @@
+/**
+ * @file suppliers.ts
+ * @description Zarządzanie dostawcami i kategoriami dostawców
+ * 
+ * Odpowiada za:
+ * - CRUD dostawców (tworzenie, odczyt, aktualizacja, usuwanie)
+ * - Zarządzanie kategoriami dostawców
+ * - Soft delete dostawców
+ * 
+ * @module actions/suppliers
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { Supplier } from '@/types';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Pobiera listę wszystkich aktywnych dostawców
+ * @returns Tablica dostawców z kategoriami, posortowana alfabetycznie
+ */
 export async function getSuppliers() {
     try {
         const suppliers = await prisma.supplier.findMany({
             where: {
-                isDeleted: 0,
+                isDeleted: 0,  // Tylko nieusunięci dostawcy
             },
             orderBy: {
-                name: 'asc',
+                name: 'asc',  // Sortuj po nazwie
             },
             include: {
-                category: true,
+                category: true,  // Dołącz kategorię
             },
         });
+        // Mapowanie null na undefined dla opcjonalnych pól
         return suppliers.map(s => ({
             ...s,
             contactPerson: s.contactPerson || undefined,
@@ -34,12 +50,18 @@ export async function getSuppliers() {
     }
 }
 
+/**
+ * Pobiera pojedynczego dostawcę po ID
+ * @param id - ID dostawcy
+ * @returns Dostawca lub null jeśli nie znaleziono/usunięty
+ */
 export async function getSupplierById(id: number) {
     try {
         const supplier = await prisma.supplier.findUnique({
             where: { id },
             include: { category: true },
         });
+        // Zwróć null dla usuniętych dostawców
         if (!supplier || supplier.isDeleted === 1) return null;
         return {
             ...supplier,
@@ -58,6 +80,12 @@ export async function getSupplierById(id: number) {
     }
 }
 
+/**
+ * Tworzy nowego dostawcę
+ * @param data - Dane dostawcy (nazwa, kontakt, adres, www, notatki, kategoria)
+ * @returns Utworzony rekord dostawcy
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createSupplier(data: Supplier) {
     try {
         const { id: _id, ...rest } = data;
@@ -82,6 +110,13 @@ export async function createSupplier(data: Supplier) {
     }
 }
 
+/**
+ * Aktualizuje dane dostawcy
+ * @param id - ID dostawcy
+ * @param data - Częściowe dane do aktualizacji
+ * @returns Zaktualizowany rekord dostawcy
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function updateSupplier(id: number, data: Partial<Supplier>) {
     try {
         const supplier = await prisma.supplier.update({
@@ -105,13 +140,18 @@ export async function updateSupplier(id: number, data: Partial<Supplier>) {
     }
 }
 
+/**
+ * Usuwa dostawcę (soft delete)
+ * @param id - ID dostawcy do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteSupplier(id: number) {
     try {
         await prisma.supplier.update({
             where: { id },
             data: {
                 isDeleted: 1,
-                deletedAt: new Date(),
+                deletedAt: new Date(),  // Zapisz datę usunięcia
             },
         });
         revalidatePath('/suppliers');
@@ -121,6 +161,10 @@ export async function deleteSupplier(id: number) {
     }
 }
 
+/**
+ * Pobiera wszystkie kategorie dostawców
+ * @returns Tablica kategorii dostawców
+ */
 export async function getSupplierCategories() {
     try {
         return await prisma.supplierCategory.findMany();
@@ -130,6 +174,12 @@ export async function getSupplierCategories() {
     }
 }
 
+/**
+ * Tworzy nową kategorię dostawców
+ * @param name - Nazwa kategorii
+ * @returns Utworzona kategoria
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createSupplierCategory(name: string) {
     try {
         return await prisma.supplierCategory.create({

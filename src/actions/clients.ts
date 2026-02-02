@@ -1,22 +1,38 @@
+/**
+ * @file clients.ts
+ * @description Zarządzanie klientami i ich kategoriami
+ * 
+ * Odpowiada za:
+ * - CRUD klientów (tworzenie, odczyt, aktualizacja, usuwanie)
+ * - Zarządzanie kategoriami klientów
+ * - Weryfikację czy klient ma aktywne projekty przed usunięciem
+ * 
+ * @module actions/clients
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { Client } from '@/types';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Pobiera listę wszystkich aktywnych klientów
+ * @returns Tablica klientów z kategoriami, posortowana alfabetycznie po nazwie
+ */
 export async function getClients() {
     try {
         const clients = await prisma.client.findMany({
             where: {
-                isDeleted: 0,
+                isDeleted: 0,  // Tylko nieusunięci klienci
             },
             orderBy: {
-                name: 'asc',
+                name: 'asc',  // Sortuj po nazwie
             },
             include: {
-                category: true,
+                category: true,  // Dołącz kategorię
             },
         });
+        // Mapowanie null na undefined dla opcjonalnych pól
         return clients.map(c => ({
             ...c,
             email: c.email || undefined,
@@ -31,6 +47,12 @@ export async function getClients() {
     }
 }
 
+/**
+ * Tworzy nowego klienta
+ * @param data - Dane klienta (nazwa, email, telefon, notatki, kategoria)
+ * @returns Utworzony rekord klienta
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createClient(data: Client) {
     try {
         const { id: _id, ...rest } = data;
@@ -52,6 +74,13 @@ export async function createClient(data: Client) {
     }
 }
 
+/**
+ * Aktualizuje dane klienta
+ * @param id - ID klienta
+ * @param data - Częściowe dane do aktualizacji
+ * @returns Zaktualizowany rekord klienta
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function updateClient(id: number, data: Partial<Client>) {
     try {
         const client = await prisma.client.update({
@@ -72,9 +101,15 @@ export async function updateClient(id: number, data: Partial<Client>) {
     }
 }
 
+/**
+ * Usuwa klienta (soft delete)
+ * Sprawdza czy klient nie ma aktywnych projektów przed usunięciem
+ * @param id - ID klienta do usunięcia
+ * @throws Error jeśli klient ma aktywne projekty lub błąd bazy danych
+ */
 export async function deleteClient(id: number) {
     try {
-        // Check if client has active projects
+        // Sprawdź czy klient ma aktywne projekty
         const hasProjects = await prisma.project.count({
             where: { clientId: id, isDeleted: 0 }
         });
@@ -98,6 +133,10 @@ export async function deleteClient(id: number) {
     }
 }
 
+/**
+ * Pobiera wszystkie kategorie klientów
+ * @returns Tablica kategorii klientów
+ */
 export async function getClientCategories() {
     try {
         return await prisma.clientCategory.findMany();
@@ -107,6 +146,12 @@ export async function getClientCategories() {
     }
 }
 
+/**
+ * Tworzy nową kategorię klientów
+ * @param name - Nazwa kategorii
+ * @returns Utworzona kategoria
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createClientCategory(name: string) {
     try {
         const category = await prisma.clientCategory.create({
@@ -119,6 +164,11 @@ export async function createClientCategory(name: string) {
     }
 }
 
+/**
+ * Sprawdza czy klient ma aktywne projekty
+ * @param clientId - ID klienta
+ * @returns true jeśli klient ma projekty, false w przeciwnym razie
+ */
 export async function checkClientHasProjects(clientId: number) {
     try {
         const count = await prisma.project.count({

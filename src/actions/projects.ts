@@ -1,9 +1,26 @@
+/**
+ * @file projects.ts
+ * @description CRUD projekty i podprojekty
+ * 
+ * Odpowiada za:
+ * - Pobieranie projektów z relacjami (klient, dostawcy, pracownicy, podprojekty)
+ * - Tworzenie, aktualizacja, soft delete projektów
+ * - Mapowanie typów Prisma na interfejsy aplikacji
+ * 
+ * @module actions/projects
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { Project, ProjectStatus, QuoteStatus } from '@/types';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Pobiera wszystkie aktywne projekty z pełnymi relacjami
+ * Mapuje dane Prisma na interfejs Project
+ * 
+ * @returns Tablica projektów posortowana od najnowszych
+ */
 export async function getProjects() {
     try {
         const projects = await prisma.project.findMany({
@@ -14,19 +31,19 @@ export async function getProjects() {
                 createdAt: 'desc',
             },
             include: {
-                client: true,
-                suppliers: true,
-                employees: true,
-                subProjects: {
+                client: true,                    // Klient projektu
+                suppliers: true,                 // Powiązani dostawcy
+                employees: true,                 // Przypisani pracownicy
+                subProjects: {                   // Podprojekty
                     where: { isDeleted: 0 },
                     include: {
-                        client: true, // if needed for preview
+                        client: true,
                     }
                 },
             },
         });
 
-        // Map Prisma result to Project interface
+        // Mapowanie wyników Prisma na interfejs Project
         return projects.map(p => ({
             ...p,
             description: p.description || undefined,
@@ -53,7 +70,6 @@ export async function getProjects() {
                 categoryId: p.client.categoryId || undefined,
                 deletedAt: p.client.deletedAt || undefined,
             },
-            // We also need to map subProjects if we want to use them in the UI with correct types
             subProjects: p.subProjects.map(sp => ({
                 ...sp,
                 description: sp.description || undefined,
@@ -77,24 +93,32 @@ export async function getProjects() {
     }
 }
 
+/**
+ * Pobiera pojedynczy projekt po ID z pełnymi relacjami
+ * Wyklucza projekty oznaczone jako usunięte
+ * 
+ * @param id - ID projektu
+ * @returns Projekt z relacjami lub null jeśli nie znaleziono
+ */
 export async function getProject(id: number) {
     try {
         const project = await prisma.project.findFirst({
             where: {
                 id,
-                isDeleted: 0  // Filter out deleted projects
+                isDeleted: 0  // Tylko nieusunięte
             },
             include: {
                 client: true,
                 suppliers: true,
                 employees: true,
                 subProjects: true,
-                parentProject: true,
+                parentProject: true,  // Projekt nadrzędny (jeśli to podprojekt)
             },
         });
 
         if (!project) return null;
 
+        // Mapowanie na interfejs z pełnymi danymi relacji
         return {
             ...project,
             description: project.description || undefined,
@@ -176,6 +200,14 @@ export async function getProject(id: number) {
     }
 }
 
+/**
+ * Tworzy nowy projekt
+ * Obsługuje powiązania z dostawcami i pracownikami
+ * 
+ * @param data - Dane projektu z supplierIds i employeeIds
+ * @returns Utworzony projekt
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createProject(data: Project) {
     try {
         const { id: _id, supplierIds, employeeIds, ...rest } = data;
@@ -199,6 +231,7 @@ export async function createProject(data: Project) {
                 lng: rest.lng,
                 colorMarker: rest.colorMarker,
                 isDeleted: 0,
+                // Powiązania many-to-many
                 suppliers: supplierIds ? {
                     connect: supplierIds.map(sid => ({ id: sid }))
                 } : undefined,
@@ -215,6 +248,15 @@ export async function createProject(data: Project) {
     }
 }
 
+/**
+ * Aktualizuje projekt
+ * Używa 'set' dla relacji many-to-many (zastępuje wszystkie powiązania)
+ * 
+ * @param id - ID projektu
+ * @param data - Częściowe dane do aktualizacji
+ * @returns Zaktualizowany projekt
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function updateProject(id: number, data: Partial<Project>) {
     try {
         const { supplierIds, employeeIds, ...rest } = data;
@@ -223,6 +265,7 @@ export async function updateProject(id: number, data: Partial<Project>) {
             where: { id },
             data: {
                 ...rest,
+                // Użyj 'set' by zastąpić wszystkie powiązania
                 suppliers: supplierIds ? {
                     set: supplierIds.map(sid => ({ id: sid }))
                 } : undefined,
@@ -231,7 +274,7 @@ export async function updateProject(id: number, data: Partial<Project>) {
                 } : undefined,
             },
         });
-        revalidatePath('/');  // Dashboard
+        revalidatePath('/');           // Dashboard
         revalidatePath('/projects');
         revalidatePath(`/projects/${id}`);
         return project;
@@ -241,6 +284,11 @@ export async function updateProject(id: number, data: Partial<Project>) {
     }
 }
 
+/**
+ * Usuwa projekt (soft delete)
+ * @param id - ID projektu do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteProject(id: number) {
     try {
         await prisma.project.update({

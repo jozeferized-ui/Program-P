@@ -1,9 +1,26 @@
+/**
+ * @file orders.ts
+ * @description Zarządzanie zamówieniami projektów
+ * 
+ * Odpowiada za:
+ * - CRUD zamówień (z powiązaniem do projektu, zadania, dostawcy)
+ * - Synchronizację z magazynem (automatyczne dodawanie pozycji)
+ * - Aktualizację powiązanych wydatków przy zmianach zamówienia
+ * - Soft delete z kaskadowym usuwaniem wydatków
+ * 
+ * @module actions/orders
+ */
 'use server'
 
 import { prisma } from '@/lib/prisma'
 import { Order } from '@/types'
 import { revalidatePath } from 'next/cache'
 
+/**
+ * Pobiera zamówienia dla projektu
+ * @param projectId - ID projektu
+ * @returns Tablica zamówień posortowana od najnowszych
+ */
 export async function getOrders(projectId: number): Promise<Order[]> {
     try {
         const orders = await prisma.order.findMany({
@@ -16,6 +33,7 @@ export async function getOrders(projectId: number): Promise<Order[]> {
             }
         });
 
+        // Mapowanie null na undefined
         return orders.map((order: any) => ({
             ...order,
             taskId: order.taskId ?? undefined,
@@ -35,11 +53,20 @@ export async function getOrders(projectId: number): Promise<Order[]> {
     }
 }
 
+/**
+ * Zamówienie rozszerzone o nazwy projektu i dostawcy
+ */
 interface ExtendedOrder extends Order {
     projectName: string;
     supplierName: string;
 }
 
+/**
+ * Pobiera wszystkie zamówienia ze wszystkich projektów
+ * (używane w widoku globalnym zamówień)
+ * 
+ * @returns Tablica zamówień z nazwami projektu i dostawcy
+ */
 export async function getAllOrders(): Promise<ExtendedOrder[]> {
     try {
         const orders = await prisma.order.findMany({
@@ -80,6 +107,23 @@ export async function getAllOrders(): Promise<ExtendedOrder[]> {
     }
 }
 
+/**
+ * Tworzy nowe zamówienie
+ * @param data - Dane zamówienia:
+ *   - projectId: ID projektu
+ *   - taskId: ID zadania (opcjonalne)
+ *   - supplierId: ID dostawcy (opcjonalne)
+ *   - title: Nazwa/opis zamówienia
+ *   - amount: Kwota brutto
+ *   - netAmount: Kwota netto (opcjonalne)
+ *   - taxRate: Stawka VAT (opcjonalne)
+ *   - status: 'Pending', 'Ordered', 'Delivered'
+ *   - date: Data zamówienia
+ *   - quantity, unit: Ilość i jednostka (opcjonalne)
+ *   - notes, url: Dodatkowe info (opcjonalne)
+ * @returns Utworzone zamówienie
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createOrder(data: Order): Promise<Order> {
     try {
         const order = await prisma.order.create({
@@ -121,20 +165,29 @@ export async function createOrder(data: Order): Promise<Order> {
     }
 }
 
+/**
+ * Aktualizuje zamówienie
+ * Automatycznie aktualizuje powiązane wydatki przy zmianie kwot
+ * 
+ * @param id - ID zamówienia
+ * @param data - Częściowe dane do aktualizacji
+ * @returns Zaktualizowane zamówienie
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function updateOrder(id: number, data: Partial<Order>): Promise<Order> {
     try {
-        // Use transaction to update order and associated expense
+        // Użyj transakcji dla spójności danych
         const order = await prisma.$transaction(async (tx) => {
             const updatedOrder = await tx.order.update({
                 where: { id },
                 data: {
                     ...data,
-                    id: undefined, // Prevent updating ID
-                    projectId: undefined, // Prevent moving projects (usually)
+                    id: undefined,        // Nie aktualizuj ID
+                    projectId: undefined, // Nie przenoś między projektami
                 }
             });
 
-            // Update associated expense if financial data changed
+            // Aktualizuj powiązane wydatki jeśli zmieniono dane finansowe
             if (data.amount !== undefined || data.netAmount !== undefined || data.taxRate !== undefined || data.title !== undefined) {
                 await tx.expense.updateMany({
                     where: { orderId: id },
@@ -171,9 +224,16 @@ export async function updateOrder(id: number, data: Partial<Order>): Promise<Ord
     }
 }
 
+/**
+ * Usuwa zamówienie (soft delete)
+ * Kaskadowo usuwa również powiązane wydatki
+ * 
+ * @param id - ID zamówienia do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteOrder(id: number): Promise<void> {
     try {
-        // Soft delete order
+        // Soft delete zamówienia
         const order = await prisma.order.update({
             where: { id },
             data: {
@@ -182,7 +242,7 @@ export async function deleteOrder(id: number): Promise<void> {
             }
         });
 
-        // Soft delete associated expenses
+        // Soft delete powiązanych wydatków
         await prisma.expense.updateMany({
             where: { orderId: id },
             data: {
@@ -198,6 +258,15 @@ export async function deleteOrder(id: number): Promise<void> {
     }
 }
 
+/**
+ * Synchronizuje zamówienie z magazynem
+ * Dodaje pozycję do magazynu lub zwiększa ilość istniejącej
+ * Tworzy wpis w historii magazynowej
+ * 
+ * @param orderId - ID zamówienia do zsynchronizowania
+ * @returns Obiekt z success: true
+ * @throws Error jeśli zamówienie już dodane lub błąd bazy danych
+ */
 export async function syncOrderToWarehouse(orderId: number) {
     try {
         const order = await prisma.order.findUnique({
@@ -210,9 +279,9 @@ export async function syncOrderToWarehouse(orderId: number) {
         const quantity = order.quantity || 1;
         const unit = order.unit || 'szt.';
 
-        // Use transaction to ensure atomicity
+        // Transakcja dla atomowości operacji
         await prisma.$transaction(async (tx) => {
-            // Check if item exists in warehouse
+            // Sprawdź czy pozycja już istnieje w magazynie
             const existingItem = await tx.warehouseItem.findFirst({
                 where: {
                     name: order.title,
@@ -221,7 +290,7 @@ export async function syncOrderToWarehouse(orderId: number) {
             });
 
             if (existingItem) {
-                // Update existing item
+                // Zwiększ ilość istniejącej pozycji
                 await tx.warehouseItem.update({
                     where: { id: existingItem.id },
                     data: {
@@ -230,6 +299,7 @@ export async function syncOrderToWarehouse(orderId: number) {
                     }
                 });
 
+                // Dodaj wpis historii (przyjęcie)
                 await tx.warehouseHistoryItem.create({
                     data: {
                         itemId: existingItem.id,
@@ -240,7 +310,7 @@ export async function syncOrderToWarehouse(orderId: number) {
                     }
                 });
             } else {
-                // Create new item
+                // Utwórz nową pozycję magazynową
                 const newItem = await tx.warehouseItem.create({
                     data: {
                         name: order.title,
@@ -253,6 +323,7 @@ export async function syncOrderToWarehouse(orderId: number) {
                     }
                 });
 
+                // Dodaj wpis historii
                 await tx.warehouseHistoryItem.create({
                     data: {
                         itemId: newItem.id,
@@ -264,7 +335,7 @@ export async function syncOrderToWarehouse(orderId: number) {
                 });
             }
 
-            // Mark order as added to warehouse
+            // Oznacz zamówienie jako dodane do magazynu
             await tx.order.update({
                 where: { id: orderId },
                 data: { addedToWarehouse: true }

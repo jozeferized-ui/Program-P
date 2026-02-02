@@ -1,8 +1,34 @@
+/**
+ * @file dashboard.ts
+ * @description Dane statystyczne dla dashboardu głównego
+ * 
+ * Odpowiada za:
+ * - Agregację danych z całej aplikacji
+ * - Statystyki projektów, zadań, zamówień
+ * - Alerty o wygasających narzędziach i uprawnieniach
+ * 
+ * @module actions/dashboard
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { ProjectStatus, TaskStatus } from '@/types';
 
+/**
+ * Pobiera wszystkie statystyki dla dashboardu
+ * Wykonuje 10 równoległych zapytań do bazy danych
+ * 
+ * @returns Obiekt zawierający:
+ *   - activeProjects: Liczba aktywnych projektów głównych
+ *   - pendingTasks: 10 ostatnich nieukończonych zadań
+ *   - pendingOrders: Zamówienia oczekujące i zamówione
+ *   - recentProjects: Projekty nieukończone z podprojektami
+ *   - completedProjects: 10 ostatnio ukończonych projektów
+ *   - allProjects: Wszystkie projekty (dla mapy i timeline)
+ *   - alerts: Alerty o wygasających narzędziach/uprawnieniach
+ * 
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function getDashboardStats() {
     try {
         const [
@@ -17,16 +43,16 @@ export async function getDashboardStats() {
             expiredPermissionsCount,
             expiringPermissionsCount
         ] = await Promise.all([
-            // 1. Active Projects Count (excluding subprojects)
+            // 1. Liczba aktywnych projektów (bez podprojektów)
             prisma.project.count({
                 where: {
                     status: 'Active',
-                    parentProjectId: null,
+                    parentProjectId: null,  // Tylko projekty główne
                     isDeleted: 0
                 }
             }),
 
-            // 2. Pending Tasks (from active projects, not done, sorted by due date/created at)
+            // 2. Nieukończone zadania z aktywnych projektów (top 10)
             prisma.task.findMany({
                 where: {
                     status: { not: 'Done' },
@@ -37,7 +63,7 @@ export async function getDashboardStats() {
                     isDeleted: 0
                 },
                 orderBy: [
-                    { dueDate: 'asc' },
+                    { dueDate: 'asc' },     // Najpilniejsze pierwsze
                     { createdAt: 'desc' }
                 ],
                 take: 10,
@@ -48,7 +74,7 @@ export async function getDashboardStats() {
                 }
             }),
 
-            // 3. Pending Orders (status Pending, from non-hold projects)
+            // 3. Zamówienia oczekujące/zamówione (nie z projektów wstrzymanych)
             prisma.order.findMany({
                 where: {
                     status: { in: ['Pending', 'Ordered'] },
@@ -69,7 +95,7 @@ export async function getDashboardStats() {
                 }
             }),
 
-            // 4. Recent Projects (main projects, not completed)
+            // 4. Projekty główne nieukończone (dla widoku listy)
             prisma.project.findMany({
                 where: {
                     parentProjectId: null,
@@ -92,7 +118,7 @@ export async function getDashboardStats() {
                 }
             }),
 
-            // 5. Completed Projects (recent 10)
+            // 5. Ukończone projekty (ostatnie 10)
             prisma.project.findMany({
                 where: {
                     status: 'Completed',
@@ -111,7 +137,7 @@ export async function getDashboardStats() {
                 }
             }),
 
-            // 6. All Projects (for timeline and map)
+            // 6. Wszystkie projekty (dla mapy i wykresu czasowego)
             prisma.project.findMany({
                 where: {
                     isDeleted: 0
@@ -125,7 +151,7 @@ export async function getDashboardStats() {
                 }
             }),
 
-            // 7. Expired Tools
+            // 7. Narzędzia z wygasłym przeglądem
             (prisma as any).tool.count({
                 where: {
                     isDeleted: 0,
@@ -133,7 +159,7 @@ export async function getDashboardStats() {
                 }
             }),
 
-            // 8. Expiring Tools (next 14 days)
+            // 8. Narzędzia z wygasającym przeglądem (14 dni)
             (prisma as any).tool.count({
                 where: {
                     isDeleted: 0,
@@ -144,14 +170,14 @@ export async function getDashboardStats() {
                 }
             }),
 
-            // 9. Expired Permissions
+            // 9. Wygasłe uprawnienia pracowników
             (prisma as any).employeePermission.count({
                 where: {
                     expiryDate: { lt: new Date() }
                 }
             }),
 
-            // 10. Expiring Permissions (next 30 days)
+            // 10. Wygasające uprawnienia (30 dni)
             (prisma as any).employeePermission.count({
                 where: {
                     expiryDate: {
@@ -162,20 +188,24 @@ export async function getDashboardStats() {
             })
         ]);
 
+        // Mapowanie i transformacja danych
         return {
             activeProjects: activeProjectsCount,
+
+            // Zadania z nazwą projektu i parsowanymi polami JSON
             pendingTasks: pendingTasks.map((t: any) => ({
                 ...t,
                 projectName: t.project?.name || 'Nieznany projekt',
                 status: t.status as TaskStatus,
-                priority: t.priority as 'Low' | 'Medium' | 'High', // Cast to Priority type
+                priority: t.priority as 'Low' | 'Medium' | 'High',
                 description: t.description || undefined,
                 dueDate: t.dueDate || undefined,
                 subtasks: t.subtasks ? JSON.parse(t.subtasks) : undefined,
                 checklist: t.checklist ? JSON.parse(t.checklist) : undefined,
                 deletedAt: t.deletedAt || undefined,
-                // Ensure dates are passed as Date objects (Prisma does this, but good to be explicit if needed)
             })),
+
+            // Zamówienia z nazwami projektu i dostawcy
             pendingOrders: pendingOrders.map((o: any) => ({
                 ...o,
                 projectName: o.project?.name || 'Nieznany projekt',
@@ -191,6 +221,8 @@ export async function getDashboardStats() {
                 url: o.url || undefined,
                 deletedAt: o.deletedAt || undefined,
             })),
+
+            // Aktywne projekty z podprojektami
             recentProjects: recentProjects.map((p: any) => ({
                 ...p,
                 clientName: p.client?.name || 'Nieznany',
@@ -214,6 +246,8 @@ export async function getDashboardStats() {
                 lng: p.lng || undefined,
                 deletedAt: p.deletedAt || undefined,
             })),
+
+            // Ukończone projekty
             completedProjects: completedProjects.map((p: any) => ({
                 ...p,
                 clientName: p.client?.name || 'Nieznany',
@@ -231,6 +265,8 @@ export async function getDashboardStats() {
                 lng: p.lng || undefined,
                 deletedAt: p.deletedAt || undefined,
             })),
+
+            // Wszystkie projekty dla mapy/timeline
             allProjects: allProjects.map((p: any) => ({
                 ...p,
                 status: p.status as ProjectStatus,
@@ -249,11 +285,13 @@ export async function getDashboardStats() {
                 supplierIds: (p.suppliers || []).map((s: any) => s.id),
                 employeeIds: (p.employees || []).map((e: any) => e.id)
             })),
+
+            // Alerty systemowe
             alerts: {
-                expiredTools: expiredToolsCount,
-                expiringTools: expiringToolsCount,
-                expiredPermissions: expiredPermissionsCount,
-                expiringPermissions: expiringPermissionsCount,
+                expiredTools: expiredToolsCount,          // Wygasłe przeglądy narzędzi
+                expiringTools: expiringToolsCount,        // Wygasające w 14 dni
+                expiredPermissions: expiredPermissionsCount,  // Wygasłe uprawnienia
+                expiringPermissions: expiringPermissionsCount, // Wygasające w 30 dni
                 total: expiredToolsCount + expiringToolsCount + expiredPermissionsCount + expiringPermissionsCount
             }
         };

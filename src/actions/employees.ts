@@ -1,22 +1,38 @@
-'use server'; // updated schema check
+/**
+ * @file employees.ts
+ * @description Zarządzanie pracownikami i ich uprawnieniami/certyfikatami
+ * 
+ * Odpowiada za:
+ * - CRUD pracowników (tworzenie, odczyt, aktualizacja, usuwanie)
+ * - Zarządzanie uprawnieniami/certyfikatami (w tym Paszport BP)
+ * - Soft delete (oznaczanie jako usunięte zamiast fizycznego usuwania)
+ * 
+ * @module actions/employees
+ */
+'use server';
 
 import { prisma } from '@/lib/prisma';
 import { Employee } from '@/types';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Pobiera listę wszystkich aktywnych pracowników
+ * @returns Tablica pracowników z ich uprawnieniami, posortowana po nazwisku
+ */
 export async function getEmployees() {
     try {
         const employees = await prisma.employee.findMany({
             where: {
-                isDeleted: 0,
+                isDeleted: 0,  // Tylko nieusunięci pracownicy
             },
             include: {
-                employeePermissions: true,
+                employeePermissions: true,  // Dołącz uprawnienia/certyfikaty
             },
             orderBy: {
-                lastName: 'asc',
+                lastName: 'asc',  // Sortuj alfabetycznie po nazwisku
             },
         });
+        // Mapowanie typów Prisma na typy aplikacji
         return employees.map(e => ({
             ...e,
             status: e.status as 'Active' | 'Inactive',
@@ -28,9 +44,15 @@ export async function getEmployees() {
     }
 }
 
+/**
+ * Tworzy nowego pracownika w bazie danych
+ * @param data - Dane pracownika (imię, nazwisko, stanowisko, kontakt, stawka)
+ * @returns Utworzony rekord pracownika
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createEmployee(data: Employee) {
     try {
-        const { id: _id, ...rest } = data;
+        const { id: _id, ...rest } = data;  // Ignoruj ID, baza przydzieli automatycznie
         const employee = await prisma.employee.create({
             data: {
                 firstName: rest.firstName,
@@ -38,12 +60,12 @@ export async function createEmployee(data: Employee) {
                 position: rest.position,
                 phone: rest.phone,
                 email: rest.email,
-                rate: rest.rate,
-                status: rest.status,
-                isDeleted: 0,
+                rate: rest.rate,         // Stawka godzinowa
+                status: rest.status,     // 'Active' lub 'Inactive'
+                isDeleted: 0,            // Nowy = nieusunięty
             },
         });
-        revalidatePath('/management'); // Assuming employees are managed in settings
+        revalidatePath('/management');  // Odśwież cache strony zarządzania
         return employee;
     } catch (error) {
         console.error('Error creating employee:', error);
@@ -51,6 +73,13 @@ export async function createEmployee(data: Employee) {
     }
 }
 
+/**
+ * Aktualizuje dane istniejącego pracownika
+ * @param id - ID pracownika do aktualizacji
+ * @param data - Częściowe dane do zaktualizowania
+ * @returns Zaktualizowany rekord pracownika
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function updateEmployee(id: number, data: Partial<Employee>) {
     try {
         const employee = await prisma.employee.update({
@@ -73,12 +102,17 @@ export async function updateEmployee(id: number, data: Partial<Employee>) {
     }
 }
 
+/**
+ * Usuwa pracownika (soft delete - oznacza jako usunięty)
+ * @param id - ID pracownika do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteEmployee(id: number) {
     try {
         await prisma.employee.update({
             where: { id },
             data: {
-                isDeleted: 1,
+                isDeleted: 1,  // Oznacz jako usunięty (soft delete)
             },
         });
         revalidatePath('/management');
@@ -88,6 +122,26 @@ export async function deleteEmployee(id: number) {
     }
 }
 
+/**
+ * Dodaje nowe uprawnienie/certyfikat do pracownika
+ * Obsługuje zarówno standardowe uprawnienia jak i Paszport BP
+ * 
+ * @param employeeId - ID pracownika
+ * @param data - Dane uprawnienia:
+ *   - name: Nazwa uprawnienia (lub "Paszport BP")
+ *   - issueDate: Data wystawienia
+ *   - expiryDate: Data ważności (opcjonalna)
+ *   - number: Numer dokumentu (opcjonalny)
+ *   - company: Firma (tylko Paszport BP)
+ *   - issuer: Wystawca (tylko Paszport BP)
+ *   - registryNumber: Numer rejestru (tylko Paszport BP)
+ *   - isAuthorizer: Czy polecający (tylko Paszport BP)
+ *   - isApprover: Czy dopuszczający (tylko Paszport BP)
+ *   - isTeamLeader: Czy kierujący (tylko Paszport BP)
+ *   - isCoordinator: Czy koordynujący (tylko Paszport BP)
+ * @returns Utworzone uprawnienie
+ * @throws Error z komunikatem po polsku
+ */
 export async function addEmployeePermission(
     employeeId: number,
     data: {
@@ -95,7 +149,6 @@ export async function addEmployeePermission(
         issueDate: Date,
         expiryDate?: Date | null,
         number?: string,
-        // BP Passport specific fields
         company?: string,
         issuer?: string,
         registryNumber?: string,
@@ -109,13 +162,13 @@ export async function addEmployeePermission(
         const permission = await prisma.employeePermission.create({
             data: {
                 employee: {
-                    connect: { id: employeeId }
+                    connect: { id: employeeId }  // Połącz z pracownikiem
                 },
                 name: data.name,
                 issueDate: data.issueDate,
                 expiryDate: data.expiryDate,
                 number: data.number,
-                // BP Passport specific fields
+                // Pola specyficzne dla Paszportu BP
                 company: data.company,
                 issuer: data.issuer,
                 registryNumber: data.registryNumber,
@@ -134,6 +187,11 @@ export async function addEmployeePermission(
     }
 }
 
+/**
+ * Usuwa uprawnienie/certyfikat pracownika (hard delete)
+ * @param id - ID uprawnienia do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteEmployeePermission(id: number) {
     try {
         await prisma.employeePermission.delete({
@@ -146,6 +204,13 @@ export async function deleteEmployeePermission(id: number) {
     }
 }
 
+/**
+ * Aktualizuje istniejące uprawnienie/certyfikat pracownika
+ * @param id - ID uprawnienia do aktualizacji
+ * @param data - Częściowe dane do zaktualizowania
+ * @returns Zaktualizowane uprawnienie
+ * @throws Error z komunikatem po polsku
+ */
 export async function updateEmployeePermission(
     id: number,
     data: {

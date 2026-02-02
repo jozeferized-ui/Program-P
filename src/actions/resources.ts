@@ -1,8 +1,26 @@
+/**
+ * @file resources.ts
+ * @description Zarządzanie zasobami/plikami projektów
+ * 
+ * Odpowiada za:
+ * - Pobieranie zasobów projektu (pliki, obrazy, linki)
+ * - Upload plików do projektu (przez FormData)
+ * - Soft delete zasobów
+ * 
+ * @module actions/resources
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Pobiera wszystkie zasoby dla projektu
+ * Zwraca pliki jako base64 zamiast surowych buforów
+ * 
+ * @param projectId - ID projektu
+ * @returns Tablica zasobów z contentBase64 zamiast contentBlob
+ */
 export async function getResources(projectId: number) {
     try {
         const resources = await prisma.resource.findMany({
@@ -11,13 +29,14 @@ export async function getResources(projectId: number) {
                 isDeleted: 0,
             },
             orderBy: {
-                createdAt: 'desc',
+                createdAt: 'desc',  // Najnowsze na górze
             },
         });
 
+        // Konwersja buforów na base64 dla frontendu
         return resources.map(r => ({
             ...r,
-            contentBlob: undefined, // Do not send raw buffer to client
+            contentBlob: undefined,  // Nie wysyłaj surowego bufora
             contentBase64: r.contentBlob ? Buffer.from(r.contentBlob).toString('base64') : undefined,
         }));
     } catch (error) {
@@ -26,6 +45,19 @@ export async function getResources(projectId: number) {
     }
 }
 
+/**
+ * Tworzy nowy zasób (plik, obraz lub link)
+ * Przyjmuje FormData dla obsługi uploadów plików
+ * 
+ * @param formData - Dane formularza:
+ *   - projectId: ID projektu
+ *   - name: Nazwa zasobu
+ *   - type: 'File', 'Image', lub 'Link'
+ *   - folder: Folder organizacyjny
+ *   - contentUrl: URL (dla typu Link)
+ *   - file: Plik (dla typu File/Image)
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createResource(formData: FormData) {
     try {
         const projectId = parseInt(formData.get('projectId') as string);
@@ -35,6 +67,7 @@ export async function createResource(formData: FormData) {
         const contentUrl = formData.get('contentUrl') as string;
         const file = formData.get('file') as File | null;
 
+        // Konwersja pliku na bufor dla zapisu w bazie
         let contentBlob: Buffer | undefined;
         if (file && (type === 'File' || type === 'Image')) {
             const arrayBuffer = await file.arrayBuffer();
@@ -48,7 +81,7 @@ export async function createResource(formData: FormData) {
                 type,
                 folder,
                 contentUrl: type === 'Link' ? contentUrl : undefined,
-                contentBlob: contentBlob as any,
+                contentBlob: contentBlob as any,  // Prisma Bytes type
             },
         });
         revalidatePath(`/projects/${projectId}`);
@@ -58,6 +91,11 @@ export async function createResource(formData: FormData) {
     }
 }
 
+/**
+ * Usuwa zasób (soft delete)
+ * @param id - ID zasobu do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteResource(id: number) {
     try {
         const resource = await prisma.resource.findUnique({

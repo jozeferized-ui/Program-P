@@ -1,16 +1,45 @@
+/**
+ * @file ical.ts
+ * @description Generator plików iCal (.ics) dla eksportu kalendarza
+ * 
+ * Pozwala na:
+ * - Generowanie zdarzeń kalendarza w formacie iCal
+ * - Obsługę wydarzeń całodniowych i czasowych
+ * - Pobieranie pliku .ics
+ * 
+ * @module lib/ical
+ */
+
 import { format } from 'date-fns';
 
+/**
+ * Zdarzenie kalendarza
+ */
 export interface CalendarEvent {
+    /** Tytuł zdarzenia */
     title: string;
+    /** Opis zdarzenia (opcjonalnie) */
     description?: string;
+    /** Data początkowa */
     startDate: Date;
+    /** Data końcowa (opcjonalnie) */
     endDate?: Date;
+    /** Czy zdarzenie całodniowe */
     allDay?: boolean;
+    /** Lokalizacja (opcjonalnie) */
     location?: string;
 }
 
+/**
+ * Generuje string iCal z tablicy zdarzeń
+ * 
+ * @param events - Tablica zdarzeń kalendarza
+ * @returns String w formacie iCal (RFC 5545)
+ */
 export function generateICal(events: CalendarEvent[]): string {
+    // Formatowanie daty dla zdarzeń czasowych: YYYYMMDDTHHMMSS
     const formatDate = (date: Date) => format(date, "yyyyMMdd'T'HHmmss");
+    // Formatowanie daty dla zdarzeń całodniowych: YYYYMMDD
     const formatDateAllDay = (date: Date) => format(date, "yyyyMMdd");
 
     const ical = [
@@ -36,15 +65,15 @@ export function generateICal(events: CalendarEvent[]): string {
         }
 
         if (event.allDay) {
+            // Zdarzenia całodniowe
             ical.push(`DTSTART;VALUE=DATE:${formatDateAllDay(event.startDate)}`);
-            // iCal end date for all-day events is exclusive, so we might need to add 1 day if it's a single day event
-            // For simplicity here, we assume single day if no end date
+            // iCal: data końcowa jest exclusive, więc dodajemy 1 dzień
             const endDate = event.endDate || event.startDate;
-            // We actually need to add 1 day to end date for iCal all-day events to include the end date
             const nextDay = new Date(endDate);
             nextDay.setDate(nextDay.getDate() + 1);
             ical.push(`DTEND;VALUE=DATE:${formatDateAllDay(nextDay)}`);
         } else {
+            // Zdarzenia czasowe
             ical.push(`DTSTART:${formatDate(event.startDate)}`);
             if (event.endDate) {
                 ical.push(`DTEND:${formatDate(event.endDate)}`);
@@ -59,6 +88,12 @@ export function generateICal(events: CalendarEvent[]): string {
     return ical.join('\r\n');
 }
 
+/**
+ * Generuje i pobiera plik iCal
+ * 
+ * @param events - Tablica zdarzeń kalendarza
+ * @param filename - Nazwa pliku (domyślnie 'calendar.ics')
+ */
 export function downloadICal(events: CalendarEvent[], filename: string = 'calendar.ics') {
     const content = generateICal(events);
     const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });

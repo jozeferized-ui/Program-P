@@ -1,19 +1,54 @@
+/**
+ * @file finances.ts
+ * @description Statystyki i raporty finansowe
+ * 
+ * Odpowiada za:
+ * - Obliczanie przychodów (zrealizowane, aktywne, prognoza)
+ * - Kalkulację kosztów i zysków
+ * - Analizę wydatków wg kategorii
+ * - Trendy miesięczne (ostatnie 12 miesięcy)
+ * - Ranking dostawców wg obrotu
+ * - KPI finansowe
+ * 
+ * @module actions/finances
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 
+/**
+ * Zakres dat dla filtrowania danych finansowych
+ */
 interface DateRange {
+    /** Data początkowa (ISO string) */
     from?: string;
+    /** Data końcowa (ISO string) */
     to?: string;
 }
 
+/**
+ * Pobiera kompleksowe statystyki finansowe
+ * 
+ * @param dateRange - Opcjonalny zakres dat (domyślnie: od początku roku)
+ * @returns Obiekt ze statystykami:
+ *   - revenue: Przychody (completed, active, forecast)
+ *   - costs: Koszty (realized, estimated)
+ *   - profit: Zyski (completed, active, forecast)
+ *   - topSupplier: Dostawca z największym obrotem
+ *   - expenseCategories: Wydatki wg kategorii
+ *   - monthlyTrend: Dane miesięczne (ostatnie 12 miesięcy)
+ *   - kpis: Wskaźniki (marża, średnia wartość projektu)
+ *   - topSuppliers: Top 5 dostawców
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function getFinancialStats(dateRange?: DateRange) {
     try {
         const now = new Date();
-        const fromDate = dateRange?.from ? new Date(dateRange.from) : new Date(now.getFullYear(), 0, 1); // Default: start of year
+        // Domyślnie: od początku roku do dziś
+        const fromDate = dateRange?.from ? new Date(dateRange.from) : new Date(now.getFullYear(), 0, 1);
         const toDate = dateRange?.to ? new Date(dateRange.to) : now;
 
-        // Fetch necessary data
+        // Pobierz wszystkie potrzebne dane równolegle
         const projects = await prisma.project.findMany({
             where: { isDeleted: 0 },
             select: {
@@ -25,6 +60,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
+        // Wydatki w okresie
         const expenses = await prisma.expense.findMany({
             where: {
                 isDeleted: 0,
@@ -41,6 +77,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
+        // Wszystkie wydatki (dla pełnego obrazu)
         const allExpenses = await prisma.expense.findMany({
             where: { isDeleted: 0 },
             select: {
@@ -51,6 +88,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
+        // Wyceny kosztów
         const costEstimates = await prisma.costEstimateItem.findMany({
             select: {
                 projectId: true,
@@ -60,6 +98,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
+        // Zamówienia w okresie (nieużywane bezpośrednio, ale pobrane dla spójności)
         const _orders = await prisma.order.findMany({
             where: {
                 isDeleted: 0,
@@ -75,6 +114,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
+        // Wszystkie zamówienia (dla rankingu dostawców)
         const allOrders = await prisma.order.findMany({
             where: { isDeleted: 0 },
             select: {
@@ -83,6 +123,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
+        // Dostawcy
         const suppliers = await prisma.supplier.findMany({
             where: { isDeleted: 0 },
             select: {
@@ -91,7 +132,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             }
         });
 
-        // 1. Revenue (Przychody)
+        // 1. Przychody (Revenue)
         const revenueCompleted = projects
             .filter(p => p.status === 'Completed')
             .reduce((sum, p) => sum + p.totalValue, 0);
@@ -100,14 +141,15 @@ export async function getFinancialStats(dateRange?: DateRange) {
             .filter(p => p.status === 'Active')
             .reduce((sum, p) => sum + p.totalValue, 0);
 
-        // Forecast includes Active, Completed, and To Quote projects (excludes On Hold)
+        // Prognoza: wszystkie projekty oprócz wstrzymanych
         const forecastProjects = projects.filter(p => p.status !== 'On Hold');
         const forecastProjectIds = new Set(forecastProjects.map(p => p.id));
 
         const revenueForecast = forecastProjects
             .reduce((sum, p) => sum + p.totalValue, 0);
 
-        // 2. Costs (Koszty)
+        // 2. Koszty (Costs)
+        // Wydatki pogrupowane wg projektu
         const expensesByProject = allExpenses.reduce((acc, exp) => {
             acc[exp.projectId] = (acc[exp.projectId] || 0) + exp.amount;
             return acc;
@@ -124,20 +166,18 @@ export async function getFinancialStats(dateRange?: DateRange) {
         const costRealizedTotal = allExpenses.reduce((sum, e) => sum + e.amount, 0);
         const costInPeriod = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-        // Estimated Costs - only for projects included in forecast
+        // Szacowane koszty (z wycen, tylko dla projektów w prognozie)
         const calculateGross = (net: number, tax: number) => net * (1 + tax / 100);
         const costEstimatedTotal = costEstimates
             .filter(item => forecastProjectIds.has(item.projectId))
             .reduce((sum, item) => sum + (item.quantity * calculateGross(item.unitNetPrice, item.taxRate)), 0);
 
-        // 3. Profit (Zysk)
+        // 3. Zysk (Profit)
         const profitCompleted = revenueCompleted - costRealizedCompleted;
         const profitActive = revenueActive - costRealizedActive;
-
-        // Forecast profit: forecast revenue minus estimated costs for forecast projects
         const profitForecast = revenueForecast - costEstimatedTotal;
 
-        // 4. Top Supplier (all time)
+        // 4. Top Dostawca (all time)
         const supplierTurnover: Record<number, number> = {};
         allOrders.forEach(order => {
             if (order.supplierId) {
@@ -159,7 +199,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             ? suppliers.find(s => s.id === topSupplierId)?.name || 'Nieznany'
             : 'Brak danych';
 
-        // 5. Expenses by Category (all expenses for full picture)
+        // 5. Wydatki wg kategorii
         const expensesByCategory = allExpenses.reduce((acc, exp) => {
             const type = exp.type === 'Employee' ? 'Robocizna' : 'Materiały';
             acc[type] = (acc[type] || 0) + exp.amount;
@@ -171,7 +211,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             value: value as number
         }));
 
-        // 6. Monthly Trend Data (last 12 months)
+        // 6. Trend miesięczny (ostatnie 12 miesięcy)
         const monthlyData: { month: string; revenue: number; costs: number; profit: number }[] = [];
 
         for (let i = 11; i >= 0; i--) {
@@ -179,7 +219,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
             const monthName = monthDate.toLocaleDateString('pl-PL', { month: 'short', year: '2-digit' });
 
-            // Revenue: projects completed in this month
+            // Przychody: projekty ukończone w tym miesiącu
             const monthRevenue = projects
                 .filter(p => {
                     if (p.status !== 'Completed' || !p.endDate) return false;
@@ -188,7 +228,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
                 })
                 .reduce((sum, p) => sum + p.totalValue, 0);
 
-            // Costs: expenses in this month
+            // Koszty: wydatki w tym miesiącu
             const monthCosts = allExpenses
                 .filter(exp => {
                     const expDate = new Date(exp.date);
@@ -204,7 +244,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             });
         }
 
-        // 7. KPIs
+        // 7. KPI
         const completedProjects = projects.filter(p => p.status === 'Completed');
         const avgProjectValue = completedProjects.length > 0
             ? completedProjects.reduce((sum, p) => sum + p.totalValue, 0) / completedProjects.length
@@ -214,7 +254,7 @@ export async function getFinancialStats(dateRange?: DateRange) {
             ? ((profitCompleted / revenueCompleted) * 100)
             : 0;
 
-        // 8. Top 5 Suppliers
+        // 8. Top 5 dostawców
         const topSuppliers = Object.entries(supplierTurnover)
             .map(([id, amount]) => ({
                 id: parseInt(id),
@@ -226,21 +266,21 @@ export async function getFinancialStats(dateRange?: DateRange) {
 
         return {
             revenue: {
-                completed: revenueCompleted,
-                active: revenueActive,
-                forecast: revenueForecast
+                completed: revenueCompleted,     // Zrealizowane (ukończone projekty)
+                active: revenueActive,            // Aktywne projekty
+                forecast: revenueForecast         // Prognoza (bez wstrzymanych)
             },
             costs: {
-                realizedCompleted: costRealizedCompleted,
-                realizedActive: costRealizedActive,
-                realizedTotal: costRealizedTotal,
-                estimatedTotal: costEstimatedTotal,
-                inPeriod: costInPeriod
+                realizedCompleted: costRealizedCompleted,  // Koszty ukończonych
+                realizedActive: costRealizedActive,        // Koszty aktywnych
+                realizedTotal: costRealizedTotal,          // Wszystkie koszty
+                estimatedTotal: costEstimatedTotal,        // Szacowane (z wycen)
+                inPeriod: costInPeriod                     // W wybranym okresie
             },
             profit: {
-                completed: profitCompleted,
-                active: profitActive,
-                forecast: profitForecast
+                completed: profitCompleted,       // Zysk z ukończonych
+                active: profitActive,             // Zysk z aktywnych (potencjalny)
+                forecast: profitForecast          // Zysk prognozowany
             },
             topSupplier: {
                 name: topSupplierName,
@@ -249,8 +289,8 @@ export async function getFinancialStats(dateRange?: DateRange) {
             expenseCategories: expenseCategoryData,
             monthlyTrend: monthlyData,
             kpis: {
-                marginPercent,
-                avgProjectValue,
+                marginPercent,                    // Marża %
+                avgProjectValue,                  // Średnia wartość projektu
                 completedProjectsCount: completedProjects.length,
                 activeProjectsCount: projects.filter(p => p.status === 'Active').length
             },
@@ -262,4 +302,3 @@ export async function getFinancialStats(dateRange?: DateRange) {
         throw error;
     }
 }
-

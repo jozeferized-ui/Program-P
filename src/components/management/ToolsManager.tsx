@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Pencil, Trash2, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode, MapPin } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Users, FileText, AlertTriangle, AlertCircle, CheckCircle, Download, QrCode, MapPin, ArrowUpDown, ArrowLeftRight, Settings2 } from "lucide-react";
 import { AddToolDialog } from "./AddToolDialog";
 import { toast } from "sonner";
 import { ScanHistoryDialog } from "@/components/tools/ScanHistoryDialog";
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, differenceInDays } from "date-fns";
 import { Workbook } from "exceljs";
 import { createTool, updateTool, deleteTool } from "@/actions/tools";
+import { quickTransferTool } from "@/actions/toolTransfer";
 import { ToolChecklistPdf } from "./ToolChecklistPdf";
 import { ToolProtocolPdf } from "./ToolProtocolPdf";
 import { ToolProtocolDialog } from "./ToolProtocolDialog";
@@ -24,11 +25,27 @@ import { BulkPrintDialog } from "./BulkPrintDialog";
 import { saveProtocol } from "@/actions/protocols";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { ArrowUpDown } from "lucide-react";
+/** Definicja kolumn tabeli z możliwością ukrywania */
+const COLUMN_CONFIG = {
+    checkbox: { label: 'Zaznacz', hideable: false },
+    lp: { label: 'Lp.', hideable: false },
+    name: { label: 'Narzędzie', hideable: false },
+    serial: { label: 'Nr seryjny', hideable: true },
+    status: { label: 'Status', hideable: true },
+    inspection: { label: 'Przegląd', hideable: true },
+    assigned: { label: 'Przypisane', hideable: true },
+    transferred: { label: 'Przekazano', hideable: true },
+    protocol: { label: 'Nr Protokołu', hideable: true },
+    actions: { label: 'Akcje', hideable: false },
+} as const;
+
+type ColumnKey = keyof typeof COLUMN_CONFIG;
 
 interface ToolsManagerProps {
     initialTools: Tool[];
@@ -65,6 +82,22 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
     const [selectedToolIds, setSelectedToolIds] = useState<Set<number>>(new Set());
     const [scanHistoryTool, setScanHistoryTool] = useState<Tool | null>(null);
     const [isBulkPrintOpen, setIsBulkPrintOpen] = useState(false);
+
+    // Column visibility - domyślnie ukryte: Przekazano, Nr Protokołu
+    const [visibleColumns, setVisibleColumns] = useState<Set<ColumnKey>>(new Set([
+        'checkbox', 'lp', 'name', 'serial', 'status', 'inspection', 'assigned', 'actions'
+    ]));
+
+    // Quick Transfer Drawer state
+    const [transferDrawerTool, setTransferDrawerTool] = useState<Tool | null>(null);
+    const [transferEmployeeSearch, setTransferEmployeeSearch] = useState('');
+    const [selectedTransferEmployee, setSelectedTransferEmployee] = useState<Employee | null>(null);
+    const [transferDate, setTransferDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+    const [transferNotes, setTransferNotes] = useState('');
+    const [isTransferring, setIsTransferring] = useState(false);
+
+    // Animation state for row updates
+    const [animatingRowId, setAnimatingRowId] = useState<number | null>(null);
 
     useEffect(() => {
         setTools(initialTools);
@@ -148,6 +181,30 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
         }
     };
 
+    /** Toggle column visibility */
+    const toggleColumn = (column: ColumnKey) => {
+        setVisibleColumns(prev => {
+            const next = new Set(prev);
+            if (next.has(column)) {
+                next.delete(column);
+            } else {
+                next.add(column);
+            }
+            return next;
+        });
+    };
+
+    /** Filtered employees for quick transfer search */
+    const filteredEmployees = initialEmployees.filter(emp => {
+        if (transferEmployeeSearch.length < 2) return true;
+        const searchLower = transferEmployeeSearch.toLowerCase();
+        return (
+            emp.firstName.toLowerCase().includes(searchLower) ||
+            emp.lastName.toLowerCase().includes(searchLower) ||
+            `${emp.firstName} ${emp.lastName}`.toLowerCase().includes(searchLower)
+        );
+    });
+
     const handleSort = (key: 'assignedEmployees' | 'inspectionExpiryDate') => {
         setSortConfig(current => {
             if (current && current.key === key) {
@@ -201,6 +258,50 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
     const handleEditClick = (tool: Tool) => {
         setEditingTool(tool);
         setIsAddDialogOpen(true);
+    };
+
+    /** Szybkie przekazanie narzędzia z drawer */
+    const handleQuickTransfer = async () => {
+        if (!transferDrawerTool || !selectedTransferEmployee) return;
+
+        setIsTransferring(true);
+        try {
+            const result = await quickTransferTool(
+                transferDrawerTool.id!,
+                selectedTransferEmployee.id!,
+                transferDate,
+                transferNotes || undefined
+            );
+
+            if (result.success && result.updatedTool) {
+                // Real-time state update without reload
+                setTools(prev => prev.map(t =>
+                    t.id === transferDrawerTool.id
+                        ? { ...t, transferredTo: result.updatedTool.transferredTo } as Tool
+                        : t
+                ));
+
+                // Trigger animation
+                setAnimatingRowId(transferDrawerTool.id!);
+                setTimeout(() => setAnimatingRowId(null), 1500);
+
+                toast.success(`Przekazano do: ${selectedTransferEmployee.firstName} ${selectedTransferEmployee.lastName}`);
+
+                // Close drawer
+                setTransferDrawerTool(null);
+                setTransferEmployeeSearch('');
+                setSelectedTransferEmployee(null);
+                setTransferNotes('');
+                setTransferDate(format(new Date(), 'yyyy-MM-dd'));
+            } else {
+                toast.error(result.error || 'Błąd przekazania');
+            }
+        } catch (error) {
+            console.error('Quick transfer error:', error);
+            toast.error('Wystąpił błąd');
+        } finally {
+            setIsTransferring(false);
+        }
     };
 
     const handlePrintChecklist = (tool: Tool) => {
@@ -440,6 +541,32 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="max-w-sm"
                 />
+
+                {/* Column visibility dropdown */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="ml-auto">
+                            <Settings2 className="h-4 w-4 mr-2" />
+                            Kolumny
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuLabel>Widoczne kolumny</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {(Object.keys(COLUMN_CONFIG) as ColumnKey[])
+                            .filter(key => COLUMN_CONFIG[key].hideable)
+                            .map(key => (
+                                <DropdownMenuCheckboxItem
+                                    key={key}
+                                    checked={visibleColumns.has(key)}
+                                    onCheckedChange={() => toggleColumn(key)}
+                                >
+                                    {COLUMN_CONFIG[key].label}
+                                </DropdownMenuCheckboxItem>
+                            ))
+                        }
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             {/* Bulk action toolbar */}
@@ -470,141 +597,209 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                 <CardHeader>
                     <CardTitle>Lista narzędzi</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-10">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedToolIds.size === filteredTools.length && filteredTools.length > 0}
-                                        onChange={toggleSelectAll}
-                                        className="h-4 w-4 rounded border-gray-300"
-                                    />
-                                </TableHead>
-                                <TableHead className="w-12">Lp.</TableHead>
-                                <TableHead>Narzędzie</TableHead>
-                                <TableHead>Nr seryjny</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('inspectionExpiryDate')}>
-                                    Przegląd (Ważność) <ArrowUpDown className="ml-2 h-4 w-4 inline" />
-                                </TableHead>
-                                <TableHead className="cursor-pointer hover:bg-muted/50" onClick={() => handleSort('assignedEmployees')}>
-                                    Przypisane osoby <ArrowUpDown className="ml-2 h-4 w-4 inline" />
-                                </TableHead>
-                                <TableHead>Przekazano</TableHead>
-                                <TableHead>Nr Protokołu</TableHead>
-                                <TableHead className="text-right">Akcje</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {filteredTools.map((tool, index) => {
-                                const isExpired = tool.inspectionExpiryDate && new Date(tool.inspectionExpiryDate) < new Date();
-                                return (
-                                    <TableRow key={tool.id} className={isExpired ? "bg-red-50 dark:bg-red-950/20" : ""}>
-                                        <TableCell>
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedToolIds.has(tool.id!)}
-                                                onChange={() => toggleToolSelection(tool.id!)}
-                                                className="h-4 w-4 rounded border-gray-300"
-                                            />
-                                        </TableCell>
-                                        <TableCell className="font-mono text-muted-foreground">{index + 1}</TableCell>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">{tool.name}</span>
-                                                <span className="text-xs text-muted-foreground">
-                                                    {tool.brand}{tool.model ? ` ${tool.model}` : ""}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-mono text-muted-foreground">{tool.serialNumber || '-'}</span>
-                                                {tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) && (
-                                                    <Badge variant="destructive" className="text-[10px] h-5 px-1.5 flex items-center gap-0.5">
-                                                        <AlertTriangle className="h-3 w-3" />
-                                                        DUPLIKAT
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>{getStatusBadge(tool.status)}</TableCell>
-                                        <TableCell>
-                                            {getInspectionStatus(tool.inspectionExpiryDate)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {tool.assignedEmployees && tool.assignedEmployees.length > 0 ? (
-                                                <div className="flex flex-col gap-1">
-                                                    {tool.assignedEmployees.map(emp => (
-                                                        <div key={emp.id} className="flex items-center text-sm">
-                                                            <Users className="h-3 w-3 mr-1 text-muted-foreground" />
-                                                            {emp.firstName} {emp.lastName}
+                <CardContent className="overflow-x-auto">
+                    <TooltipProvider>
+                        <Table className="table-fixed w-full">
+                            <TableHeader className="sticky top-0 z-10 bg-background">
+                                <TableRow>
+                                    {/* Checkbox - always visible */}
+                                    <TableHead className="w-10">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedToolIds.size === filteredTools.length && filteredTools.length > 0}
+                                            onChange={toggleSelectAll}
+                                            className="h-4 w-4 rounded border-gray-300"
+                                        />
+                                    </TableHead>
+                                    {/* Lp - always visible */}
+                                    <TableHead className="w-12">Lp.</TableHead>
+                                    {/* Narzędzie - always visible */}
+                                    <TableHead className="min-w-[180px]">Narzędzie</TableHead>
+                                    {/* Nr seryjny */}
+                                    {visibleColumns.has('serial') && <TableHead className="w-[140px]">Nr seryjny</TableHead>}
+                                    {/* Status */}
+                                    {visibleColumns.has('status') && <TableHead className="w-[100px]">Status</TableHead>}
+                                    {/* Przegląd */}
+                                    {visibleColumns.has('inspection') && (
+                                        <TableHead className="w-[160px] cursor-pointer hover:bg-muted/50" onClick={() => handleSort('inspectionExpiryDate')}>
+                                            Przegląd <ArrowUpDown className="ml-1 h-3 w-3 inline" />
+                                        </TableHead>
+                                    )}
+                                    {/* Przypisane */}
+                                    {visibleColumns.has('assigned') && (
+                                        <TableHead className="w-[150px] cursor-pointer hover:bg-muted/50" onClick={() => handleSort('assignedEmployees')}>
+                                            Przypisane <ArrowUpDown className="ml-1 h-3 w-3 inline" />
+                                        </TableHead>
+                                    )}
+                                    {/* Przekazano */}
+                                    {visibleColumns.has('transferred') && <TableHead className="w-[140px]">Przekazano</TableHead>}
+                                    {/* Nr Protokołu */}
+                                    {visibleColumns.has('protocol') && <TableHead className="w-[100px]">Nr Protokołu</TableHead>}
+                                    {/* Akcje - always visible */}
+                                    <TableHead className="text-right w-[220px]">Akcje</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredTools.map((tool, index) => {
+                                    const isExpired = tool.inspectionExpiryDate && new Date(tool.inspectionExpiryDate) < new Date();
+                                    const isAnimating = animatingRowId === tool.id;
+                                    return (
+                                        <TableRow
+                                            key={tool.id}
+                                            className={`
+                                            ${isExpired ? "bg-red-50 dark:bg-red-950/20" : ""} 
+                                            ${isAnimating ? "animate-pulse bg-green-100 dark:bg-green-900/30" : ""}
+                                            transition-all duration-300
+                                        `}
+                                        >
+                                            {/* Checkbox */}
+                                            <TableCell>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedToolIds.has(tool.id!)}
+                                                    onChange={() => toggleToolSelection(tool.id!)}
+                                                    className="h-4 w-4 rounded border-gray-300"
+                                                />
+                                            </TableCell>
+                                            {/* Lp */}
+                                            <TableCell className="font-mono text-muted-foreground">{index + 1}</TableCell>
+                                            {/* Narzędzie - with truncation and tooltip */}
+                                            <TableCell>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <div className="flex flex-col max-w-[180px]">
+                                                            <span className="font-medium truncate">{tool.name}</span>
+                                                            <span className="text-xs text-muted-foreground truncate">
+                                                                {tool.brand}{tool.model ? ` ${tool.model}` : ""}
+                                                            </span>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">-</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            {(tool as any).transferredTo ? (
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
-                                                        {(tool as any).transferredTo.firstName[0]}{(tool as any).transferredTo.lastName[0]}
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>
+                                                        <p className="font-medium">{tool.name}</p>
+                                                        <p className="text-xs">{tool.brand}{tool.model ? ` ${tool.model}` : ""}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TableCell>
+                                            {/* Nr seryjny */}
+                                            {visibleColumns.has('serial') && (
+                                                <TableCell>
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-mono text-muted-foreground text-xs truncate max-w-[100px]">{tool.serialNumber || '-'}</span>
+                                                        {tool.serialNumber && duplicateSerials.has(tool.serialNumber.trim()) && (
+                                                            <Badge variant="destructive" className="text-[10px] h-5 px-1 flex items-center gap-0.5">
+                                                                <AlertTriangle className="h-3 w-3" />
+                                                            </Badge>
+                                                        )}
                                                     </div>
-                                                    <span className="text-sm font-medium text-blue-700">
-                                                        {(tool as any).transferredTo.firstName} {(tool as any).transferredTo.lastName}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">-</span>
+                                                </TableCell>
                                             )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <span className="text-sm font-mono">{tool.protocolNumber || '-'}</span>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="ghost" size="icon" title="Drukuj etykietę/kartę" onClick={() => handlePrintChecklist(tool)}>
-                                                    <FileText className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="outline" size="sm" onClick={() => {
-                                                    setSelectedToolForProtocol(tool);
-                                                    setIsHistoryDialogOpen(true);
-                                                }}>
-                                                    Historia
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => tool.id && handleOpenProtocolDialog(tool)} aria-label="Dodaj protokół">
-                                                    <FileText className="h-4 w-4 text-blue-600" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleOpenQr(tool)} title="Kod QR" aria-label="Pokaż kod QR">
-                                                    <QrCode className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => setScanHistoryTool(tool)} title="Historia skanów" aria-label="Pokaż historię skanów">
-                                                    <MapPin className="h-4 w-4 text-emerald-600" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(tool)} aria-label="Edytuj narzędzie">
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={() => tool.id && confirmDelete(tool.id)} aria-label="Usuń narzędzie">
-                                                    <Trash2 className="h-4 w-4 text-red-500" />
-                                                </Button>
-                                            </div>
+                                            {/* Status */}
+                                            {visibleColumns.has('status') && <TableCell>{getStatusBadge(tool.status)}</TableCell>}
+                                            {/* Przegląd */}
+                                            {visibleColumns.has('inspection') && (
+                                                <TableCell className="text-sm">
+                                                    {getInspectionStatus(tool.inspectionExpiryDate)}
+                                                </TableCell>
+                                            )}
+                                            {/* Przypisane */}
+                                            {visibleColumns.has('assigned') && (
+                                                <TableCell>
+                                                    {tool.assignedEmployees && tool.assignedEmployees.length > 0 ? (
+                                                        <div className="flex flex-col gap-0.5">
+                                                            {tool.assignedEmployees.slice(0, 2).map(emp => (
+                                                                <div key={emp.id} className="flex items-center text-xs">
+                                                                    <Users className="h-3 w-3 mr-1 text-muted-foreground" />
+                                                                    <span className="truncate max-w-[110px]">{emp.firstName} {emp.lastName}</span>
+                                                                </div>
+                                                            ))}
+                                                            {tool.assignedEmployees.length > 2 && (
+                                                                <span className="text-xs text-muted-foreground">+{tool.assignedEmployees.length - 2} więcej</span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">-</span>
+                                                    )}
+                                                </TableCell>
+                                            )}
+                                            {/* Przekazano */}
+                                            {visibleColumns.has('transferred') && (
+                                                <TableCell>
+                                                    {(tool as any).transferredTo ? (
+                                                        <div className="flex items-center gap-1">
+                                                            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">
+                                                                {(tool as any).transferredTo.firstName[0]}{(tool as any).transferredTo.lastName[0]}
+                                                            </div>
+                                                            <span className="text-xs font-medium text-blue-700 truncate max-w-[80px]">
+                                                                {(tool as any).transferredTo.firstName} {(tool as any).transferredTo.lastName}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-muted-foreground">-</span>
+                                                    )}
+                                                </TableCell>
+                                            )}
+                                            {/* Nr Protokołu */}
+                                            {visibleColumns.has('protocol') && (
+                                                <TableCell>
+                                                    <span className="text-xs font-mono truncate">{tool.protocolNumber || '-'}</span>
+                                                </TableCell>
+                                            )}
+                                            {/* Akcje */}
+                                            <TableCell className="text-right">
+                                                <div className="flex justify-end gap-1">
+                                                    {/* Quick Transfer Button */}
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                                                onClick={() => setTransferDrawerTool(tool)}
+                                                            >
+                                                                <ArrowLeftRight className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Przekaż narzędzie</TooltipContent>
+                                                    </Tooltip>
+                                                    <Button variant="ghost" size="icon" title="Drukuj" onClick={() => handlePrintChecklist(tool)}>
+                                                        <FileText className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" className="h-8 px-2 text-xs" onClick={() => {
+                                                        setSelectedToolForProtocol(tool);
+                                                        setIsHistoryDialogOpen(true);
+                                                    }}>
+                                                        Historia
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => tool.id && handleOpenProtocolDialog(tool)}>
+                                                        <FileText className="h-4 w-4 text-blue-600" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleOpenQr(tool)} title="QR">
+                                                        <QrCode className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => setScanHistoryTool(tool)} title="Skany">
+                                                        <MapPin className="h-4 w-4 text-emerald-600" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => handleEditClick(tool)}>
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" onClick={() => tool.id && confirmDelete(tool.id)}>
+                                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                                    </Button>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                                {filteredTools.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                                            Brak narzędzi spełniających kryteria
                                         </TableCell>
                                     </TableRow>
-                                );
-                            })}
-                            {filteredTools.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                                        Brak narzędzi spełniających kryteria
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TooltipProvider>
                 </CardContent>
             </Card>
 
@@ -709,6 +904,154 @@ export function ToolsManager({ initialTools, initialEmployees }: ToolsManagerPro
                 selectedTools={tools.filter(t => t.id && selectedToolIds.has(t.id))}
                 allTools={tools}
             />
+
+            {/* Quick Transfer Drawer */}
+            <Sheet
+                open={!!transferDrawerTool}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setTransferDrawerTool(null);
+                        setTransferEmployeeSearch('');
+                        setSelectedTransferEmployee(null);
+                        setTransferNotes('');
+                        setTransferDate(format(new Date(), 'yyyy-MM-dd'));
+                    }
+                }}
+            >
+                <SheetContent className="w-[400px] sm:w-[540px]">
+                    <SheetHeader>
+                        <SheetTitle className="flex items-center gap-2">
+                            <ArrowLeftRight className="h-5 w-5 text-orange-600" />
+                            Przekaż narzędzie
+                        </SheetTitle>
+                        <SheetDescription>
+                            {transferDrawerTool?.name} ({transferDrawerTool?.serialNumber || 'brak nr'})
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="mt-6 space-y-6">
+                        {/* Current assignee */}
+                        {transferDrawerTool?.assignedEmployees && transferDrawerTool.assignedEmployees.length > 0 && (
+                            <div className="p-3 bg-muted rounded-lg">
+                                <Label className="text-xs text-muted-foreground">Obecnie przypisane do:</Label>
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                    {transferDrawerTool.assignedEmployees.map(emp => (
+                                        <Badge key={emp.id} variant="secondary" className="text-sm">
+                                            {emp.firstName} {emp.lastName}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Smart Search for new employee */}
+                        <div className="space-y-2">
+                            <Label htmlFor="transfer-search">Przekaż do pracownika</Label>
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    id="transfer-search"
+                                    placeholder="Wpisz min. 2 znaki..."
+                                    value={transferEmployeeSearch}
+                                    onChange={(e) => {
+                                        setTransferEmployeeSearch(e.target.value);
+                                        setSelectedTransferEmployee(null);
+                                    }}
+                                    className="pl-10"
+                                />
+                            </div>
+
+                            {/* Employee search results */}
+                            {transferEmployeeSearch.length >= 2 && !selectedTransferEmployee && (
+                                <div className="max-h-48 overflow-y-auto border rounded-lg divide-y">
+                                    {filteredEmployees.slice(0, 10).map(emp => (
+                                        <button
+                                            key={emp.id}
+                                            type="button"
+                                            className="w-full px-3 py-2 text-left hover:bg-muted flex items-center gap-3 transition-colors"
+                                            onClick={() => {
+                                                setSelectedTransferEmployee(emp);
+                                                setTransferEmployeeSearch(`${emp.firstName} ${emp.lastName}`);
+                                            }}
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">
+                                                {emp.firstName[0]}{emp.lastName[0]}
+                                            </div>
+                                            <span className="font-medium">{emp.firstName} {emp.lastName}</span>
+                                        </button>
+                                    ))}
+                                    {filteredEmployees.length === 0 && (
+                                        <div className="px-3 py-4 text-center text-muted-foreground">
+                                            Brak wyników
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Selected employee chip */}
+                            {selectedTransferEmployee && (
+                                <div className="flex items-center gap-2 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                                    <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center text-xs font-bold">
+                                        {selectedTransferEmployee.firstName[0]}{selectedTransferEmployee.lastName[0]}
+                                    </div>
+                                    <span className="font-medium text-green-700 dark:text-green-300">
+                                        {selectedTransferEmployee.firstName} {selectedTransferEmployee.lastName}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="ml-auto h-6 w-6"
+                                        onClick={() => {
+                                            setSelectedTransferEmployee(null);
+                                            setTransferEmployeeSearch('');
+                                        }}
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Transfer date */}
+                        <div className="space-y-2">
+                            <Label htmlFor="transfer-date">Data przekazania</Label>
+                            <Input
+                                id="transfer-date"
+                                type="date"
+                                value={transferDate}
+                                onChange={(e) => setTransferDate(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Notes */}
+                        <div className="space-y-2">
+                            <Label htmlFor="transfer-notes">Notatki (opcjonalne)</Label>
+                            <Input
+                                id="transfer-notes"
+                                placeholder="Dodaj uwagi do przekazania..."
+                                value={transferNotes}
+                                onChange={(e) => setTransferNotes(e.target.value)}
+                            />
+                        </div>
+
+                        {/* Submit button */}
+                        <Button
+                            className="w-full"
+                            disabled={!selectedTransferEmployee || isTransferring}
+                            onClick={handleQuickTransfer}
+                        >
+                            {isTransferring ? (
+                                <>Przekazywanie...</>
+                            ) : (
+                                <>
+                                    <ArrowLeftRight className="mr-2 h-4 w-4" />
+                                    Przekaż narzędzie
+                                </>
+                            )}
+                        </Button>
+                    </div>
+                </SheetContent>
+            </Sheet>
 
         </div>
     );

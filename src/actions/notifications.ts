@@ -1,9 +1,30 @@
+/**
+ * @file notifications.ts
+ * @description System powiadomień aplikacji
+ * 
+ * Odpowiada za:
+ * - Tworzenie powiadomień różnych typów
+ * - Zarządzanie stanem przeczytania
+ * - Powiązania z zadaniami, zamówieniami i projektami
+ * 
+ * @module actions/notifications
+ */
 'use server'
 
 import { prisma } from '@/lib/prisma'
 import { Notification, NotificationType } from '@/types'
 import { revalidatePath } from 'next/cache'
 
+/**
+ * Tworzy nowe powiadomienie
+ * @param type - Typ powiadomienia (info, warning, error, success)
+ * @param title - Tytuł powiadomienia
+ * @param message - Treść powiadomienia
+ * @param relatedId - ID powiązanego obiektu (opcjonalne)
+ * @param relatedType - Typ powiązanego obiektu: 'task', 'order', 'project'
+ * @returns Utworzone powiadomienie
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createNotification(
     type: NotificationType,
     title: string,
@@ -17,13 +38,13 @@ export async function createNotification(
                 type,
                 title,
                 message,
-                relatedId,
-                relatedType,
-                read: false,
+                relatedId,      // ID powiązanego obiektu
+                relatedType,    // Typ obiektu do linkowania
+                read: false,    // Domyślnie nieprzeczytane
                 createdAt: new Date()
             }
         });
-        revalidatePath('/'); // Notifications are global
+        revalidatePath('/');  // Powiadomienia są globalne
         return {
             ...notification,
             type: notification.type as NotificationType,
@@ -36,11 +57,15 @@ export async function createNotification(
     }
 }
 
+/**
+ * Pobiera ostatnie 50 powiadomień
+ * @returns Tablica powiadomień posortowana od najnowszych
+ */
 export async function getNotifications(): Promise<Notification[]> {
     try {
         const notifications = await prisma.notification.findMany({
             orderBy: { createdAt: 'desc' },
-            take: 50 // Limit to last 50
+            take: 50  // Limit do 50 najnowszych
         });
         return notifications.map(n => ({
             ...n,
@@ -54,6 +79,11 @@ export async function getNotifications(): Promise<Notification[]> {
     }
 }
 
+/**
+ * Oznacza pojedyncze powiadomienie jako przeczytane
+ * @param id - ID powiadomienia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function markNotificationAsRead(id: number): Promise<void> {
     try {
         await prisma.notification.update({
@@ -67,6 +97,10 @@ export async function markNotificationAsRead(id: number): Promise<void> {
     }
 }
 
+/**
+ * Pobiera liczbę nieprzeczytanych powiadomień
+ * @returns Liczba nieprzeczytanych powiadomień
+ */
 export async function getUnreadNotificationCount(): Promise<number> {
     try {
         return await prisma.notification.count({
@@ -78,6 +112,10 @@ export async function getUnreadNotificationCount(): Promise<number> {
     }
 }
 
+/**
+ * Oznacza wszystkie powiadomienia jako przeczytane
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function markAllNotificationsAsRead(): Promise<void> {
     try {
         await prisma.notification.updateMany({
@@ -91,6 +129,10 @@ export async function markAllNotificationsAsRead(): Promise<void> {
     }
 }
 
+/**
+ * Usuwa wszystkie powiadomienia (hard delete)
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function clearAllNotifications(): Promise<void> {
     try {
         await prisma.notification.deleteMany({});
@@ -101,6 +143,11 @@ export async function clearAllNotifications(): Promise<void> {
     }
 }
 
+/**
+ * Pobiera projektId powiązany z zadaniem (dla nawigacji)
+ * @param taskId - ID zadania
+ * @returns Obiekt z projectId lub null
+ */
 export async function getRelatedTask(taskId: number) {
     try {
         return await prisma.task.findUnique({
@@ -113,6 +160,11 @@ export async function getRelatedTask(taskId: number) {
     }
 }
 
+/**
+ * Pobiera projektId powiązany z zamówieniem (dla nawigacji)
+ * @param orderId - ID zamówienia
+ * @returns Obiekt z projectId lub null
+ */
 export async function getRelatedOrder(orderId: number) {
     try {
         return await prisma.order.findUnique({
@@ -124,4 +176,3 @@ export async function getRelatedOrder(orderId: number) {
         return null;
     }
 }
-

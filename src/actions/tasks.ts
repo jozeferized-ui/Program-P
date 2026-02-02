@@ -1,25 +1,41 @@
+/**
+ * @file tasks.ts
+ * @description Zarządzanie zadaniami projektów
+ * 
+ * Odpowiada za:
+ * - CRUD zadań (tworzenie, odczyt, aktualizacja, usuwanie)
+ * - Parsowanie JSON dla checklist i subtasks
+ * - Soft delete zadań
+ * 
+ * @module actions/tasks
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { Task, TaskStatus, Priority } from '@/types';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Pobiera wszystkie zadania dla danego projektu
+ * @param projectId - ID projektu
+ * @returns Tablica zadań z parsowanymi checklistami i subtaskami
+ */
 export async function getTasks(projectId: number) {
     try {
         const tasks = await prisma.task.findMany({
             where: {
                 projectId,
-                isDeleted: 0,
+                isDeleted: 0,  // Tylko nieusunięte zadania
             },
             orderBy: {
-                createdAt: 'desc',
+                createdAt: 'desc',  // Najnowsze na górze
             },
         });
 
         return tasks.map(t => {
             const { checklist, subtasks, ...rest } = t;
 
-            // Safely parse JSON fields
+            // Bezpieczne parsowanie pól JSON
             let parsedChecklist;
             let parsedSubtasks;
 
@@ -44,8 +60,8 @@ export async function getTasks(projectId: number) {
                 checklist: parsedChecklist,
                 subtasks: parsedSubtasks,
                 deletedAt: t.deletedAt || undefined,
-                status: t.status as TaskStatus,
-                priority: t.priority as Priority,
+                status: t.status as TaskStatus,      // 'Todo' | 'In Progress' | 'Done'
+                priority: t.priority as Priority,    // 'Low' | 'Medium' | 'High'
             };
         });
     } catch (error) {
@@ -54,6 +70,12 @@ export async function getTasks(projectId: number) {
     }
 }
 
+/**
+ * Tworzy nowe zadanie
+ * @param data - Dane zadania (tytuł, opis, status, priorytet, termin, checklist, subtasks)
+ * @returns Utworzone zadanie
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createTask(data: Task) {
     try {
         const { id: _id, checklist, subtasks, ...rest } = data;
@@ -65,7 +87,7 @@ export async function createTask(data: Task) {
                 status: rest.status,
                 priority: rest.priority,
                 dueDate: rest.dueDate,
-                checklist: checklist ? JSON.stringify(checklist) : undefined,
+                checklist: checklist ? JSON.stringify(checklist) : undefined,  // Serializacja do JSON
                 subtasks: subtasks ? JSON.stringify(subtasks) : undefined,
                 isDeleted: 0,
             },
@@ -78,6 +100,13 @@ export async function createTask(data: Task) {
     }
 }
 
+/**
+ * Aktualizuje istniejące zadanie
+ * @param id - ID zadania
+ * @param data - Częściowe dane do aktualizacji
+ * @returns Zaktualizowane zadanie
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function updateTask(id: number, data: Partial<Task>) {
     try {
         const { checklist, subtasks, id: _unused, ...rest } = data;
@@ -98,6 +127,11 @@ export async function updateTask(id: number, data: Partial<Task>) {
     }
 }
 
+/**
+ * Usuwa zadanie (soft delete)
+ * @param id - ID zadania do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteTask(id: number) {
     try {
         const task = await prisma.task.update({

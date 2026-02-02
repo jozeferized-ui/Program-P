@@ -1,3 +1,15 @@
+/**
+ * @file users.ts
+ * @description Zarządzanie użytkownikami i autentykacja
+ * 
+ * Odpowiada za:
+ * - CRUD użytkowników z rolami
+ * - Logowanie/wylogowanie z JWT
+ * - Zarządzanie hasłami (bcrypt)
+ * - Sprawdzanie uprawnień
+ * 
+ * @module actions/users
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
@@ -5,21 +17,37 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
+/** Sekret JWT do podpisywania tokenów */
 const JWT_SECRET = process.env.JWT_SECRET!;
 
+/**
+ * Interfejs danych użytkownika (bez hasła)
+ */
 export interface UserData {
+    /** ID użytkownika */
     id: number;
+    /** Email (login) */
     email: string;
+    /** Imię */
     firstName: string;
+    /** Nazwisko */
     lastName: string;
+    /** ID roli */
     roleId: number;
+    /** Nazwa roli */
     roleName: string;
+    /** Lista uprawnień użytkownika */
     permissions: string[];
+    /** Czy konto aktywne */
     isActive: boolean;
+    /** Data utworzenia konta */
     createdAt: Date;
 }
 
-// Get all users
+/**
+ * Pobiera wszystkich użytkowników z rolami
+ * @returns Tablica użytkowników posortowana od najnowszych
+ */
 export async function getUsers(): Promise<UserData[]> {
     const users = await prisma.user.findMany({
         include: { role: true },
@@ -39,7 +67,11 @@ export async function getUsers(): Promise<UserData[]> {
     }));
 }
 
-// Get user by ID
+/**
+ * Pobiera użytkownika po ID
+ * @param id - ID użytkownika
+ * @returns Dane użytkownika lub null
+ */
 export async function getUserById(id: number): Promise<UserData | null> {
     const user = await prisma.user.findUnique({
         where: { id },
@@ -61,7 +93,17 @@ export async function getUserById(id: number): Promise<UserData | null> {
     };
 }
 
-// Create new user
+/**
+ * Tworzy nowego użytkownika
+ * Hashuje hasło przed zapisem (bcrypt, salt 12)
+ * 
+ * @param data - Dane użytkownika:
+ *   - email: Email (musi być unikalny)
+ *   - password: Hasło (plain text)
+ *   - firstName, lastName: Imię i nazwisko
+ *   - roleId: ID roli
+ * @returns Obiekt z success, error, user
+ */
 export async function createUser(data: {
     email: string;
     password: string;
@@ -70,19 +112,19 @@ export async function createUser(data: {
     roleId: number;
 }): Promise<{ success: boolean; error?: string; user?: UserData }> {
     try {
-        // Check if email exists
+        // Sprawdź unikalność emaila
         const existing = await prisma.user.findUnique({ where: { email: data.email } });
         if (existing) {
             return { success: false, error: 'Email już istnieje' };
         }
 
-        // Check if role exists
+        // Sprawdź czy rola istnieje
         const role = await prisma.role.findUnique({ where: { id: data.roleId } });
         if (!role) {
             return { success: false, error: 'Rola nie istnieje' };
         }
 
-        // Hash password
+        // Hashuj hasło
         const hashedPassword = await bcrypt.hash(data.password, 12);
 
         const user = await prisma.user.create({
@@ -116,7 +158,12 @@ export async function createUser(data: {
     }
 }
 
-// Update user
+/**
+ * Aktualizuje dane użytkownika (bez hasła)
+ * @param id - ID użytkownika
+ * @param data - Częściowe dane do aktualizacji
+ * @returns Obiekt z success i error
+ */
 export async function updateUser(
     id: number,
     data: {
@@ -139,7 +186,12 @@ export async function updateUser(
     }
 }
 
-// Reset password
+/**
+ * Resetuje hasło użytkownika
+ * @param id - ID użytkownika
+ * @param newPassword - Nowe hasło (plain text)
+ * @returns Obiekt z success i error
+ */
 export async function resetUserPassword(
     id: number,
     newPassword: string
@@ -157,7 +209,14 @@ export async function resetUserPassword(
     }
 }
 
-// Login
+/**
+ * Loguje użytkownika
+ * Weryfikuje email/hasło, tworzy JWT token, ustawia cookie
+ * 
+ * @param email - Email użytkownika
+ * @param password - Hasło (plain text)
+ * @returns Obiekt z success, error, user
+ */
 export async function loginUser(
     email: string,
     password: string
@@ -176,6 +235,7 @@ export async function loginUser(
             return { success: false, error: 'Konto jest nieaktywne' };
         }
 
+        // Weryfikuj hasło
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
             return { success: false, error: 'Nieprawidłowy email lub hasło' };
@@ -183,7 +243,7 @@ export async function loginUser(
 
         const permissions = JSON.parse(user.role.permissions) as string[];
 
-        // Create JWT token
+        // Utwórz token JWT (ważny 7 dni)
         const token = jwt.sign(
             {
                 userId: user.id,
@@ -198,13 +258,13 @@ export async function loginUser(
             { expiresIn: '7d' }
         );
 
-        // Set cookie
+        // Ustaw cookie auth-token
         const cookieStore = await cookies();
         cookieStore.set('auth-token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7, // 7 days
+            maxAge: 60 * 60 * 24 * 7,  // 7 dni
             path: '/',
         });
 
@@ -228,13 +288,20 @@ export async function loginUser(
     }
 }
 
-// Logout
+/**
+ * Wylogowuje użytkownika (usuwa cookie auth-token)
+ */
 export async function logoutUser(): Promise<void> {
     const cookieStore = await cookies();
     cookieStore.delete('auth-token');
 }
 
-// Get current user from token
+/**
+ * Pobiera aktualnie zalogowanego użytkownika z tokena JWT
+ * Weryfikuje token i pobiera świeże dane z bazy
+ * 
+ * @returns Dane użytkownika lub null jeśli niezalogowany
+ */
 export async function getCurrentUser(): Promise<UserData | null> {
     try {
         const cookieStore = await cookies();
@@ -242,6 +309,7 @@ export async function getCurrentUser(): Promise<UserData | null> {
 
         if (!token) return null;
 
+        // Dekoduj i weryfikuj token
         const decoded = jwt.verify(token, JWT_SECRET) as {
             userId: number;
             email: string;
@@ -252,7 +320,7 @@ export async function getCurrentUser(): Promise<UserData | null> {
             lastName: string;
         };
 
-        // Get fresh user data from database
+        // Pobierz świeże dane użytkownika z bazy
         const user = await prisma.user.findUnique({
             where: { id: decoded.userId },
             include: { role: true },
@@ -272,18 +340,26 @@ export async function getCurrentUser(): Promise<UserData | null> {
             createdAt: user.createdAt,
         };
     } catch {
-        return null;
+        return null;  // Token nieważny lub wygasły
     }
 }
 
-// Check if current user has permission
+/**
+ * Sprawdza czy aktualny użytkownik ma dane uprawnienie
+ * @param permissionId - ID uprawnienia do sprawdzenia
+ * @returns true jeśli użytkownik ma uprawnienie
+ */
 export async function hasPermission(permissionId: string): Promise<boolean> {
     const user = await getCurrentUser();
     if (!user) return false;
     return user.permissions.includes(permissionId);
 }
 
-// Check if current user has any of the permissions
+/**
+ * Sprawdza czy aktualny użytkownik ma którekolwiek z podanych uprawnień
+ * @param permissionIds - Tablica ID uprawnień
+ * @returns true jeśli użytkownik ma przynajmniej jedno uprawnienie
+ */
 export async function hasAnyPermission(permissionIds: string[]): Promise<boolean> {
     const user = await getCurrentUser();
     if (!user) return false;

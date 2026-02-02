@@ -1,27 +1,67 @@
+/**
+ * @file db.ts
+ * @description Konfiguracja lokalnej bazy danych Dexie (IndexedDB)
+ * 
+ * Ten plik zawiera:
+ * - Definicję schematu bazy danych Dexie
+ * - Historię migracji (wersje 9-21)
+ * - Eksport singleton instancji `db`
+ * 
+ * UWAGA: Ta baza jest używana jako fallback/offline storage.
+ * Główna baza danych to PostgreSQL (przez Prisma).
+ * 
+ * @module lib/db
+ */
+
 import Dexie, { Table } from 'dexie';
 import { Client, Project, Task, Expense, Resource, Supplier, QuotationItem, Order, OrderTemplate, ClientCategory, SupplierCategory, CostEstimateItem, Notification, Employee, Tool, WarehouseItem, WarehouseHistoryItem } from '@/types';
 
+/**
+ * Klasa bazy danych Dexie dla zarządzania projektami
+ * Rozszerza Dexie i definiuje wszystkie tabele
+ */
 export class ProjectManagementDB extends Dexie {
+    /** Tabela klientów */
     clients!: Table<Client>;
+    /** Tabela projektów */
     projects!: Table<Project>;
+    /** Tabela zadań */
     tasks!: Table<Task>;
+    /** Tabela wydatków */
     expenses!: Table<Expense>;
+    /** Tabela zasobów/plików */
     resources!: Table<Resource>;
+    /** Tabela dostawców */
     suppliers!: Table<Supplier>;
+    /** Tabela pozycji wycen */
     quotationItems!: Table<QuotationItem>;
+    /** Tabela zamówień */
     orders!: Table<Order>;
+    /** Tabela szablonów zamówień */
     orderTemplates!: Table<OrderTemplate>;
+    /** Tabela kategorii klientów */
     clientCategories!: Table<ClientCategory>;
+    /** Tabela kategorii dostawców */
     supplierCategories!: Table<SupplierCategory>;
+    /** Tabela wycen kosztów */
     costEstimates!: Table<CostEstimateItem>;
+    /** Tabela powiadomień */
     notifications!: Table<Notification>;
+    /** Tabela pracowników */
     employees!: Table<Employee>;
+    /** Tabela narzędzi */
     tools!: Table<Tool>;
+    /** Tabela pozycji magazynowych */
     warehouseItems!: Table<WarehouseItem>;
+    /** Tabela historii magazynu */
     warehouseHistory!: Table<WarehouseHistoryItem>;
 
     constructor() {
         super('ProjectManagementDB');
+
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 9: Bazowy schemat
+        // ─────────────────────────────────────────────────────────────────────
         this.version(9).stores({
             clients: '++id, name, categoryId',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, createdAt',
@@ -37,7 +77,9 @@ export class ProjectManagementDB extends Dexie {
             supplierCategories: '++id, name'
         });
 
-        // Version 10: Add netAmount and taxRate to expenses
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 10: Dodanie netAmount i taxRate do wydatków
+        // ─────────────────────────────────────────────────────────────────────
         this.version(10).stores({
             clients: '++id, name, categoryId',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, createdAt',
@@ -52,7 +94,7 @@ export class ProjectManagementDB extends Dexie {
             clientCategories: '++id, name',
             supplierCategories: '++id, name'
         }).upgrade(async (tx) => {
-            // Migration: Calculate netAmount for existing expenses
+            // Migracja: Oblicz netAmount dla istniejących wydatków
             const expenses = await tx.table('expenses').toArray();
 
             for (const expense of expenses) {
@@ -68,7 +110,9 @@ export class ProjectManagementDB extends Dexie {
             }
         });
 
-        // Version 11: Add quoteStatus and acceptedDate to projects
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 11: Dodanie quoteStatus i acceptedDate do projektów
+        // ─────────────────────────────────────────────────────────────────────
         this.version(11).stores({
             clients: '++id, name, categoryId',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt',
@@ -83,7 +127,7 @@ export class ProjectManagementDB extends Dexie {
             clientCategories: '++id, name',
             supplierCategories: '++id, name'
         }).upgrade(async (tx) => {
-            // Migration: Set default quoteStatus for existing projects
+            // Migracja: Ustaw domyślny quoteStatus
             const projects = await tx.table('projects').toArray();
 
             for (const project of projects) {
@@ -94,7 +138,10 @@ export class ProjectManagementDB extends Dexie {
                 }
             }
         });
-        // Version 12: Add quotationTitle to projects and priceWithMargin to quotationItems
+
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 12: Dodanie quotationTitle i priceWithMargin
+        // ─────────────────────────────────────────────────────────────────────
         this.version(12).stores({
             clients: '++id, name, categoryId',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt',
@@ -110,7 +157,9 @@ export class ProjectManagementDB extends Dexie {
             supplierCategories: '++id, name'
         });
 
-        // Version 13: Reset quoteStatus 'W trakcie' to undefined to show 'Brak' by default
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 13: Reset quoteStatus 'W trakcie' -> undefined
+        // ─────────────────────────────────────────────────────────────────────
         this.version(13).stores({
             clients: '++id, name, categoryId',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt',
@@ -134,7 +183,10 @@ export class ProjectManagementDB extends Dexie {
                 }
             }
         });
-        // Version 14: Add isDeleted to major tables for Soft Delete
+
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 14: Soft Delete (isDeleted) dla głównych tabel
+        // ─────────────────────────────────────────────────────────────────────
         this.version(14).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, isDeleted',
@@ -149,14 +201,16 @@ export class ProjectManagementDB extends Dexie {
             clientCategories: '++id, name',
             supplierCategories: '++id, name'
         }).upgrade(async (tx) => {
-            // Initialize isDeleted = 0 for existing records
+            // Inicjalizuj isDeleted = 0 dla istniejących rekordów
             const tables = ['clients', 'projects', 'tasks', 'expenses', 'resources', 'suppliers', 'orders'];
             for (const tableName of tables) {
                 await tx.table(tableName).toCollection().modify({ isDeleted: 0 });
             }
         });
 
-        // Version 15: Add notifications table
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 15: Tabela powiadomień
+        // ─────────────────────────────────────────────────────────────────────
         this.version(15).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, isDeleted',
@@ -173,7 +227,9 @@ export class ProjectManagementDB extends Dexie {
             notifications: '++id, type, read, createdAt, relatedType, relatedId'
         });
 
-        // Version 16: Add employees and tools tables
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 16: Tabele pracowników i narzędzi
+        // ─────────────────────────────────────────────────────────────────────
         this.version(16).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, isDeleted',
@@ -192,7 +248,9 @@ export class ProjectManagementDB extends Dexie {
             tools: '++id, name, brand, status, assignedTo, isDeleted'
         });
 
-        // Version 17: Add address and location to projects
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 17: Adres i lokalizacja w projektach
+        // ─────────────────────────────────────────────────────────────────────
         this.version(17).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, address, lat, lng, isDeleted',
@@ -211,7 +269,9 @@ export class ProjectManagementDB extends Dexie {
             tools: '++id, name, brand, status, assignedTo, isDeleted'
         });
 
-        // Version 18: Add employeeIds to projects
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 18: employeeIds w projektach
+        // ─────────────────────────────────────────────────────────────────────
         this.version(18).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, *employeeIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, address, lat, lng, isDeleted',
@@ -230,7 +290,9 @@ export class ProjectManagementDB extends Dexie {
             tools: '++id, name, brand, status, assignedTo, isDeleted'
         });
 
-        // Version 19: Add warehouseItems table
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 19: Tabela magazynu
+        // ─────────────────────────────────────────────────────────────────────
         this.version(19).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, *employeeIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, address, lat, lng, isDeleted',
@@ -251,7 +313,9 @@ export class ProjectManagementDB extends Dexie {
             warehouseHistory: '++id, itemId, type, date'
         });
 
-        // Version 20: Add quantity and unit to orders
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 20: quantity i unit w zamówieniach
+        // ─────────────────────────────────────────────────────────────────────
         this.version(20).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, *employeeIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, address, lat, lng, isDeleted',
@@ -272,7 +336,9 @@ export class ProjectManagementDB extends Dexie {
             warehouseHistory: '++id, itemId, type, date'
         });
 
-        // Version 21: Add addedToWarehouse to orders
+        // ─────────────────────────────────────────────────────────────────────
+        // WERSJA 21: addedToWarehouse w zamówieniach (aktualna)
+        // ─────────────────────────────────────────────────────────────────────
         this.version(21).stores({
             clients: '++id, name, categoryId, isDeleted',
             projects: '++id, clientId, parentProjectId, *supplierIds, *employeeIds, status, quoteDueDate, quoteStatus, acceptedDate, createdAt, address, lat, lng, isDeleted',
@@ -295,4 +361,5 @@ export class ProjectManagementDB extends Dexie {
     }
 }
 
+/** Singleton instancja bazy danych Dexie */
 export const db = new ProjectManagementDB();

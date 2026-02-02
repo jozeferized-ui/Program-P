@@ -1,9 +1,32 @@
+/**
+ * @file notificationService.ts
+ * @description Serwis zarządzania powiadomieniami w aplikacji
+ * 
+ * Funkcjonalności:
+ * - Tworzenie powiadomień (z opcjonalnym browser push)
+ * - Automatyczne sprawdzanie terminów zadań
+ * - Zarządzanie uprawnieniami przeglądarki
+ * 
+ * Używa lokalnej bazy Dexie do przechowywania powiadomień
+ * 
+ * @module lib/notificationService
+ */
+
 import { db } from './db';
 import { NotificationType } from '@/types';
 
+/**
+ * Serwis obsługi powiadomień
+ */
 export class NotificationService {
     /**
-     * Create a new notification
+     * Tworzy nowe powiadomienie i (opcjonalnie) pokazuje browser push
+     * 
+     * @param type - Typ powiadomienia (task_deadline, task_completed, etc.)
+     * @param title - Tytuł powiadomienia
+     * @param message - Treść powiadomienia
+     * @param relatedId - ID powiązanego elementu (opcjonalne)
+     * @param relatedType - Typ powiązanego elementu (opcjonalne)
      */
     static async create(
         type: NotificationType,
@@ -12,6 +35,7 @@ export class NotificationService {
         relatedId?: number,
         relatedType?: 'task' | 'order' | 'project'
     ) {
+        // Zapisz w lokalnej bazie
         await db.notifications.add({
             type,
             title,
@@ -22,7 +46,7 @@ export class NotificationService {
             relatedType
         });
 
-        // If browser push notifications are enabled and supported, send one
+        // Pokaż browser push jeśli włączone i dostępne
         if ('Notification' in window && Notification.permission === 'granted') {
             try {
                 new Notification(title, {
@@ -37,7 +61,16 @@ export class NotificationService {
     }
 
     /**
-     * Check for upcoming task deadlines and create notifications
+     * Sprawdza terminy zadań i tworzy powiadomienia o zbliżających się deadline'ach
+     * 
+     * Sprawdza zadania z terminami:
+     * - Przeterminowane (czerwone)
+     * - Dziś
+     * - Jutro
+     * - Za 3 dni
+     * - Za tydzień
+     * 
+     * Unika duplikowania powiadomień
      */
     static async checkDeadlines() {
         const now = new Date();
@@ -53,12 +86,12 @@ export class NotificationService {
         oneWeekFromNow.setDate(oneWeekFromNow.getDate() + 7);
         oneWeekFromNow.setHours(0, 0, 0, 0);
 
-        // Get all tasks that are not done and not deleted
+        // Pobierz nieukończone zadania z terminami
         const tasks = await db.tasks
             .filter(t => t.status !== 'Done' && t.isDeleted !== 1 && !!t.dueDate)
             .toArray();
 
-        // Get existing deadline notifications to avoid duplicates
+        // Unikaj duplikatów - pobierz już istniejące powiadomienia
         const existingNotifications = await db.notifications
             .where({ type: 'task_deadline' })
             .toArray();
@@ -82,23 +115,23 @@ export class NotificationService {
             let message = '';
 
             if (daysUntilDue < 0) {
-                // Overdue
+                // Przeterminowane
                 shouldNotify = true;
                 message = `Zadanie "${task.title}" jest zaległe (termin: ${dueDate.toLocaleDateString('pl-PL')})`;
             } else if (daysUntilDue === 0) {
-                // Due today
+                // Dziś
                 shouldNotify = true;
                 message = `Zadanie "${task.title}" kończy się dzisiaj`;
             } else if (daysUntilDue === 1) {
-                // Due tomorrow
+                // Jutro
                 shouldNotify = true;
                 message = `Zadanie "${task.title}" kończy się jutro`;
             } else if (daysUntilDue === 3) {
-                // Due in 3 days
+                // Za 3 dni
                 shouldNotify = true;
                 message = `Zadanie "${task.title}" kończy się za 3 dni`;
             } else if (daysUntilDue === 7) {
-                // Due in 1 week
+                // Za tydzień
                 shouldNotify = true;
                 message = `Zadanie "${task.title}" kończy się za tydzień`;
             }
@@ -116,7 +149,8 @@ export class NotificationService {
     }
 
     /**
-     * Request browser push notification permission
+     * Prosi o uprawnienia do pokazywania powiadomień push w przeglądarce
+     * @returns true jeśli uprawnienia przyznane, false w przeciwnym wypadku
      */
     static async requestPermission(): Promise<boolean> {
         if (!('Notification' in window)) {

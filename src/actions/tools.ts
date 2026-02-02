@@ -1,9 +1,27 @@
+/**
+ * @file tools.ts
+ * @description Zarządzanie narzędziami i sprzętem
+ * 
+ * Odpowiada za:
+ * - CRUD narzędzi z kategoriami
+ * - Przypisywanie narzędzi do pracowników
+ * - Śledzenie przeglądów i dat ważności
+ * - Obsługę statusów (Available, In Use, Maintenance, Lost)
+ * 
+ * @module actions/tools
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { Tool } from '@/types';
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Pobiera wszystkie aktywne narzędzia z relacjami
+ * Zawiera przypisanych pracowników, kategorię, przekazania i protokoły
+ * 
+ * @returns Tablica narzędzi posortowana alfabetycznie po nazwie
+ */
 export async function getTools() {
     try {
         const tools = await (prisma as any).tool.findMany({
@@ -11,10 +29,10 @@ export async function getTools() {
                 isDeleted: 0,
             },
             include: {
-                assignedEmployees: true,
-                category: true,
-                transferredTo: true,
-                protocols: {
+                assignedEmployees: true,      // Przypisani pracownicy
+                category: true,               // Kategoria narzędzia
+                transferredTo: true,          // Aktualny posiadacz (przekazanie)
+                protocols: {                  // Protokoły kontrolne
                     orderBy: { date: 'desc' },
                 }
             },
@@ -22,6 +40,8 @@ export async function getTools() {
                 name: 'asc',
             },
         });
+
+        // Mapowanie na interfejs aplikacji
         return (tools || []).map((t: any) => ({
             ...t,
             assignedEmployees: (t.assignedEmployees || []).map((e: any) => ({
@@ -38,7 +58,7 @@ export async function getTools() {
             category: t.category ?? undefined,
             protocols: (t.protocols || []).map((p: any) => ({
                 ...p,
-                data: p.content
+                data: p.content  // Mapuj content na data dla kompatybilności
             }))
         }));
     } catch (error) {
@@ -47,6 +67,11 @@ export async function getTools() {
     }
 }
 
+/**
+ * Pobiera pojedyncze narzędzie po ID
+ * @param id - ID narzędzia
+ * @returns Narzędzie z relacjami lub null
+ */
 export async function getToolById(id: number) {
     try {
         const tool = await (prisma as any).tool.findUnique({
@@ -88,6 +113,23 @@ export async function getToolById(id: number) {
     }
 }
 
+/**
+ * Tworzy nowe narzędzie
+ * @param data - Dane narzędzia:
+ *   - name: Nazwa narzędzia
+ *   - brand: Marka
+ *   - model: Model (opcjonalne)
+ *   - serialNumber: Numer seryjny
+ *   - status: Status (Available, In Use, Maintenance, Lost)
+ *   - purchaseDate: Data zakupu
+ *   - price: Cena zakupu
+ *   - employeeIds: ID przypisanych pracowników
+ *   - lastInspectionDate, inspectionExpiryDate: Daty przeglądów
+ *   - protocolNumber: Numer protokołu
+ *   - categoryId: ID kategorii
+ * @returns Utworzone narzędzie
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function createTool(data: Tool & { employeeIds?: number[] }) {
     try {
         const tool = await (prisma as any).tool.create({
@@ -114,6 +156,7 @@ export async function createTool(data: Tool & { employeeIds?: number[] }) {
             }
         });
         revalidatePath('/management');
+
         const t = tool as any;
         return {
             ...t,
@@ -133,6 +176,15 @@ export async function createTool(data: Tool & { employeeIds?: number[] }) {
     }
 }
 
+/**
+ * Aktualizuje narzędzie
+ * Używa 'set' dla relacji z pracownikami (zastępuje wszystkie powiązania)
+ * 
+ * @param id - ID narzędzia
+ * @param data - Częściowe dane do aktualizacji
+ * @returns Zaktualizowane narzędzie
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function updateTool(id: number, data: Partial<Tool> & { employeeIds?: number[] }) {
     try {
         const updateData: any = {
@@ -149,6 +201,7 @@ export async function updateTool(id: number, data: Partial<Tool> & { employeeIds
             categoryId: data.categoryId,
         };
 
+        // Aktualizuj przypisania pracowników jeśli podano
         if (data.employeeIds) {
             updateData.assignedEmployees = {
                 set: data.employeeIds.map(id => ({ id })),
@@ -164,6 +217,7 @@ export async function updateTool(id: number, data: Partial<Tool> & { employeeIds
             }
         });
         revalidatePath('/management');
+
         const t = tool as any;
         return {
             ...t,
@@ -183,6 +237,11 @@ export async function updateTool(id: number, data: Partial<Tool> & { employeeIds
     }
 }
 
+/**
+ * Usuwa narzędzie (soft delete)
+ * @param id - ID narzędzia do usunięcia
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function deleteTool(id: number) {
     try {
         await (prisma as any).tool.update({

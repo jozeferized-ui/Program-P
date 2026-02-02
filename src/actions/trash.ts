@@ -1,9 +1,24 @@
+/**
+ * @file trash.ts
+ * @description Kosz - zarządzanie usuniętymi elementami i historia
+ * 
+ * Odpowiada za:
+ * - Pobieranie usuniętych elementów (projekty, klienci, dostawcy, zamówienia)
+ * - Przywracanie elementów z kosza
+ * - Trwałe usuwanie (wraz z powiązanymi danymi)
+ * - Pobieranie danych historycznych (zadania, projekty, historia cen)
+ * 
+ * @module actions/trash
+ */
 'use server';
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
-// Get all deleted items
+/**
+ * Pobiera wszystkie usunięte elementy
+ * @returns Obiekt z tablicami: projects, clients, suppliers, orders
+ */
 export async function getDeletedItems() {
     try {
         const [projects, clients, suppliers, orders] = await Promise.all([
@@ -32,7 +47,15 @@ export async function getDeletedItems() {
     }
 }
 
-// Restore item
+/**
+ * Przywraca element z kosza (odznacza jako usunięty)
+ * Dla zamówień przywraca również powiązane wydatki
+ * 
+ * @param table - Typ elementu: 'project', 'client', 'supplier', 'order'
+ * @param id - ID elementu do przywrócenia
+ * @returns Obiekt z success: true
+ * @throws Error w przypadku błędu bazy danych
+ */
 export async function restoreItem(table: 'project' | 'client' | 'supplier' | 'order', id: number) {
     try {
         const updateData = { isDeleted: 0, deletedAt: null };
@@ -51,7 +74,7 @@ export async function restoreItem(table: 'project' | 'client' | 'supplier' | 'or
                 revalidatePath('/suppliers');
                 break;
             case 'order':
-                // Also restore associated expenses
+                // Przywróć zamówienie wraz z powiązanymi wydatkami
                 await prisma.$transaction(async (tx) => {
                     await tx.order.update({ where: { id }, data: updateData });
                     await tx.expense.updateMany({
@@ -71,44 +94,55 @@ export async function restoreItem(table: 'project' | 'client' | 'supplier' | 'or
     }
 }
 
-// Permanently delete item
+/**
+ * Trwale usuwa element (hard delete)
+ * Usuwa również wszystkie powiązane dane (cascade)
+ * 
+ * @param table - Typ elementu: 'project', 'client', 'supplier', 'order'
+ * @param id - ID elementu do usunięcia
+ * @returns Obiekt z success: true
+ * @throws Error jeśli klient ma projekty lub błąd bazy danych
+ */
 export async function permanentlyDeleteItem(table: 'project' | 'client' | 'supplier' | 'order', id: number) {
     try {
         await prisma.$transaction(async (tx) => {
             switch (table) {
                 case 'project':
-                    // Delete related records first (cascade)
+                    // Usuń wszystkie powiązane rekordy (cascade)
                     await tx.expense.deleteMany({ where: { projectId: id } });
                     await tx.task.deleteMany({ where: { projectId: id } });
                     await tx.order.deleteMany({ where: { projectId: id } });
                     await tx.resource.deleteMany({ where: { projectId: id } });
                     await tx.quotationItem.deleteMany({ where: { projectId: id } });
                     await tx.costEstimateItem.deleteMany({ where: { projectId: id } });
-                    // Handle subprojects - set their parentProjectId to null
+                    // Odłącz podprojekty (ustaw parentProjectId na null)
                     await tx.project.updateMany({
                         where: { parentProjectId: id },
                         data: { parentProjectId: null }
                     });
                     await tx.project.delete({ where: { id } });
                     break;
+
                 case 'client':
-                    // Cannot delete client with active projects - check first
+                    // Sprawdź czy klient ma projekty
                     const projectCount = await tx.project.count({ where: { clientId: id } });
                     if (projectCount > 0) {
                         throw new Error('Cannot delete client with existing projects');
                     }
                     await tx.client.delete({ where: { id } });
                     break;
+
                 case 'supplier':
-                    // Disconnect supplier from projects and orders, then delete
+                    // Odłącz dostawcę od zamówień, potem usuń
                     await tx.order.updateMany({
                         where: { supplierId: id },
                         data: { supplierId: null }
                     });
                     await tx.supplier.delete({ where: { id } });
                     break;
+
                 case 'order':
-                    // Delete related expenses first
+                    // Usuń powiązane wydatki, potem zamówienie
                     await tx.expense.deleteMany({ where: { orderId: id } });
                     await tx.order.delete({ where: { id } });
                     break;
@@ -123,7 +157,10 @@ export async function permanentlyDeleteItem(table: 'project' | 'client' | 'suppl
     }
 }
 
-// Get all tasks (for calendar)
+/**
+ * Pobiera wszystkie aktywne zadania (dla kalendarza)
+ * @returns Tablica zadań nieoznaczonych jako usunięte
+ */
 export async function getAllTasks() {
     try {
         const tasks = await prisma.task.findMany({
@@ -142,7 +179,10 @@ export async function getAllTasks() {
     }
 }
 
-// Get completed tasks (for history)
+/**
+ * Pobiera ukończone zadania (dla historii)
+ * @returns Tablica zadań ze statusem 'Done'
+ */
 export async function getCompletedTasks() {
     try {
         const tasks = await prisma.task.findMany({
@@ -161,7 +201,10 @@ export async function getCompletedTasks() {
     }
 }
 
-// Get completed projects (for history)
+/**
+ * Pobiera ukończone projekty (dla historii)
+ * @returns Tablica projektów ze statusem 'Completed'
+ */
 export async function getCompletedProjects() {
     try {
         const projects = await prisma.project.findMany({
@@ -175,9 +218,15 @@ export async function getCompletedProjects() {
     }
 }
 
-// Get price history (quotation items from accepted quotes)
+/**
+ * Pobiera historię cen (pozycje wycen z zaakceptowanych projektów)
+ * Używane do analizy historycznych wycen
+ * 
+ * @returns Tablica pozycji wycen z informacjami o projekcie i kliencie
+ */
 export async function getPriceHistory() {
     try {
+        // Pobierz projekty z zaakceptowaną wyceną
         const projects = await prisma.project.findMany({
             where: { quoteStatus: 'Zaakceptowana', isDeleted: 0 },
             include: { client: true },
@@ -185,16 +234,19 @@ export async function getPriceHistory() {
 
         const projectIds = projects.map(p => p.id);
 
+        // Pobierz pozycje wycen z tych projektów
         const quotationItems = await prisma.quotationItem.findMany({
             where: { projectId: { in: projectIds } },
         });
 
+        // Typ dla rozszerzonej pozycji z danymi projektu
         type HistoryItem = typeof quotationItems[0] & {
             projectName: string;
             clientName: string;
             acceptedDate: Date | null;
         };
 
+        // Połącz z danymi projektu
         const itemsWithDetails: HistoryItem[] = quotationItems.map(item => {
             const project = projects.find(p => p.id === item.projectId);
             return {
@@ -205,6 +257,7 @@ export async function getPriceHistory() {
             };
         });
 
+        // Sortuj od najnowszych
         return itemsWithDetails.sort((a, b) => {
             if (!a.acceptedDate && !b.acceptedDate) return 0;
             if (!a.acceptedDate) return 1;
